@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle exec pod install:*)",
+      "Bash(npx react-native:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(wc:*)",
+      "Bash(for f in CategoriesScreen.tsx CheckoutScreen.tsx ProfileScreen.tsx CategoryProductsScreen.tsx ProductDetailScreen.tsx CartScreen.tsx ProductSwiperScreen.tsx OnboardingScreen.tsx)",
+      "Bash(do sed -i '' 's/barStyle=\"\"light-content\"\"/barStyle=\"\"dark-content\"\"/g' \"$f\")",
+      "Bash(done)",
+      "Bash(osascript:*)",
+      "Bash(cliclick:*)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:docs.thewidlarzgroup.com)",
+      "Bash(npm view:*)",
+      "Bash(npx patch-package react-native-video)"
+    ]
+  }
+}

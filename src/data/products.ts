@@ -1,0 +1,1002 @@
+// Product data for Trenzo fashion marketplace (Indian market)
+
+export interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  category: string;
+  subcategory: string;
+  sizes: string[];
+  colors: string[];
+  images: string[];
+  rating: number;
+  reviews: number;
+  isFeatured?: boolean;
+  isNew?: boolean;
+  discount?: number;
+  gender?: 'men' | 'women' | 'unisex';
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  image: string;
+  itemCount: number;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  color: string;
+  magazineTitle?: string;
+  quote?: string;
+  season?: string;
+  issueTag?: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  logo: string;
+  tagline: string;
+  productCount: number;
+}
+
+export interface FlashDeal {
+  product: Product;
+  dealPrice: number;
+  endsAt: Date;
+  claimed: number;
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  image: string;
+  borderColor: string;
+}
+
+export interface Collection {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  productIds: string[];
+}
+
+// Format price in Indian Rupees with proper comma placement
+export function formatPrice(price: number): string {
+  const rounded = Math.round(price);
+  const str = rounded.toString();
+  if (str.length <= 3) return '\u20B9' + str;
+  const last3 = str.slice(-3);
+  const remaining = str.slice(0, -3);
+  const formatted = remaining.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
+  return '\u20B9' + formatted;
+}
+
+export const CATEGORIES: Category[] = [
+  {
+    id: 'cat1',
+    name: 'Dresses',
+    icon: 'shopping-bag',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400',
+    itemCount: 42,
+  },
+  {
+    id: 'cat2',
+    name: 'Tops',
+    icon: 'layers',
+    image: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=400',
+    itemCount: 56,
+  },
+  {
+    id: 'cat3',
+    name: 'Bottoms',
+    icon: 'maximize',
+    image: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400',
+    itemCount: 38,
+  },
+  {
+    id: 'cat4',
+    name: 'Outerwear',
+    icon: 'cloud',
+    image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400',
+    itemCount: 24,
+  },
+  {
+    id: 'cat5',
+    name: 'Accessories',
+    icon: 'watch',
+    image: 'https://images.unsplash.com/photo-1611923134239-b9be5816e23c?w=400',
+    itemCount: 67,
+  },
+  {
+    id: 'cat6',
+    name: 'Shoes',
+    icon: 'triangle',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
+    itemCount: 45,
+  },
+  {
+    id: 'cat7',
+    name: 'Bags',
+    icon: 'briefcase',
+    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400',
+    itemCount: 31,
+  },
+  {
+    id: 'cat8',
+    name: 'Activewear',
+    icon: 'activity',
+    image: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=400',
+    itemCount: 29,
+  },
+];
+
+export const BANNERS: Banner[] = [
+  {
+    id: 'b1',
+    title: 'Summer\nCollection',
+    subtitle: 'Up to 40% off on new arrivals',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800',
+    color: '#0D1B3E',
+    magazineTitle: 'TRENZO',
+    quote: 'Color Outside\nthe Lines',
+    season: 'SS \'26',
+    issueTag: 'THE SUMMER ISSUE',
+  },
+  {
+    id: 'b2',
+    title: 'Minimal\nEssentials',
+    subtitle: 'Curated basics for everyday',
+    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=800',
+    color: '#132D6B',
+    magazineTitle: 'TRENZO',
+    quote: 'Less is the\nNew More',
+    season: 'EDIT 04',
+    issueTag: 'THE MINIMAL ISSUE',
+  },
+  {
+    id: 'b3',
+    title: 'New In\nAccessories',
+    subtitle: 'Complete your look',
+    image: 'https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?w=800',
+    color: '#1A3B8A',
+    magazineTitle: 'TRENZO',
+    quote: 'Details Make\nthe Outfit',
+    season: 'VOL. III',
+    issueTag: 'ACCESSORIES SPECIAL',
+  },
+  {
+    id: 'b4',
+    title: 'Street\nStyle',
+    subtitle: 'Urban fashion essentials',
+    image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800',
+    color: '#1B2631',
+    magazineTitle: 'TRENZO',
+    quote: 'Own the\nSidewalk',
+    season: 'ISSUE 07',
+    issueTag: 'STREET CULTURE',
+  },
+  {
+    id: 'b5',
+    title: 'Luxury\nEdit',
+    subtitle: 'Premium designer picks',
+    image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800',
+    color: '#4A235A',
+    magazineTitle: 'TRENZO',
+    quote: 'Elegance is\nan Attitude',
+    season: 'LUXE \'26',
+    issueTag: 'THE LUXURY EDIT',
+  },
+  {
+    id: 'b6',
+    title: 'Denim\nStudio',
+    subtitle: 'Classic & contemporary denim',
+    image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800',
+    color: '#1A3C5E',
+    magazineTitle: 'TRENZO',
+    quote: 'Forever in\nBlue Jeans',
+    season: 'DENIM 01',
+    issueTag: 'DENIM SPECIAL',
+  },
+  {
+    id: 'b7',
+    title: 'Festive\nCollection',
+    subtitle: 'Celebrate in style',
+    image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800',
+    color: '#6C3483',
+    magazineTitle: 'TRENZO',
+    quote: 'Dress for the\nMoment',
+    season: 'FESTIVE \'26',
+    issueTag: 'CELEBRATION EDIT',
+  },
+  {
+    id: 'b8',
+    title: 'Trending\nNow',
+    subtitle: 'Most loved this season',
+    image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800',
+    color: '#1E3A2F',
+    magazineTitle: 'TRENZO',
+    quote: 'Set the Trend,\nDon\'t Follow',
+    season: 'NOW \'26',
+    issueTag: 'TRENDING',
+  },
+];
+
+export const BRANDS: Brand[] = [
+  {
+    id: 'br1',
+    name: 'H&M',
+    logo: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=200',
+    tagline: 'Fashion & Quality',
+    productCount: 48,
+  },
+  {
+    id: 'br2',
+    name: 'Zara',
+    logo: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=200',
+    tagline: 'Latest Trends',
+    productCount: 36,
+  },
+  {
+    id: 'br3',
+    name: 'Uniqlo',
+    logo: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=200',
+    tagline: 'LifeWear',
+    productCount: 32,
+  },
+  {
+    id: 'br4',
+    name: 'Nike',
+    logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
+    tagline: 'Just Do It',
+    productCount: 40,
+  },
+  {
+    id: 'br5',
+    name: 'Adidas',
+    logo: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=200',
+    tagline: 'Impossible Is Nothing',
+    productCount: 35,
+  },
+  {
+    id: 'br6',
+    name: 'Mango',
+    logo: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=200',
+    tagline: 'Take Your Time',
+    productCount: 28,
+  },
+  {
+    id: 'br7',
+    name: 'Studio',
+    logo: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=200',
+    tagline: 'Modern Essentials',
+    productCount: 22,
+  },
+];
+
+export const STORIES: Story[] = [
+  {
+    id: 's1',
+    title: 'New In',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200',
+    borderColor: '#E8607C',
+  },
+  {
+    id: 's2',
+    title: 'Trending',
+    image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=200',
+    borderColor: '#3A6DD4',
+  },
+  {
+    id: 's3',
+    title: 'Sale',
+    image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200',
+    borderColor: '#1A3B8A',
+  },
+  {
+    id: 's4',
+    title: 'Streetwear',
+    image: 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=200',
+    borderColor: '#F5A623',
+  },
+  {
+    id: 's5',
+    title: 'Ethnic',
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=200',
+    borderColor: '#2E5BB7',
+  },
+  {
+    id: 's6',
+    title: 'Sports',
+    image: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=200',
+    borderColor: '#34C759',
+  },
+  {
+    id: 's7',
+    title: 'Luxury',
+    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=200',
+    borderColor: '#9B59B6',
+  },
+  {
+    id: 's8',
+    title: 'Party',
+    image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=200',
+    borderColor: '#FF6B6B',
+  },
+];
+
+export const COLLECTIONS: Collection[] = [
+  {
+    id: 'col1',
+    title: 'Summer Essentials',
+    subtitle: 'Beat the heat in style',
+    image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600',
+    productIds: ['p1', 'p2', 'p8', 'p12'],
+  },
+  {
+    id: 'col2',
+    title: 'Office Ready',
+    subtitle: 'Workwear that works',
+    image: 'https://images.unsplash.com/photo-1581044777550-4cfa60707998?w=600',
+    productIds: ['p13', 'p14', 'p3', 'p15'],
+  },
+  {
+    id: 'col3',
+    title: 'Weekend Vibes',
+    subtitle: 'Casual & comfortable',
+    image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=600',
+    productIds: ['p2', 'p6', 'p10', 'p26'],
+  },
+  {
+    id: 'col4',
+    title: 'Date Night',
+    subtitle: 'Dress to impress',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600',
+    productIds: ['p1', 'p9', 'p5', 'p11'],
+  },
+];
+
+export const PRODUCTS: Product[] = [
+  // ===== WOMEN'S PRODUCTS =====
+  {
+    id: 'p1',
+    name: 'Linen Wrap Dress',
+    brand: 'H&M',
+    price: 2499,
+    originalPrice: 3999,
+    description: 'A beautifully crafted linen wrap dress in a warm terracotta tone. Features a flattering V-neckline, adjustable waist tie, and relaxed fit.',
+    category: 'Dresses',
+    subcategory: 'Midi Dresses',
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    colors: ['#C75B39', '#E8D5C4', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600',
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=600',
+    ],
+    rating: 4.8,
+    reviews: 124,
+    isFeatured: true,
+    isNew: true,
+    discount: 31,
+    gender: 'women',
+  },
+  {
+    id: 'p2',
+    name: 'Oversized Cotton Tee',
+    brand: 'Uniqlo',
+    price: 999,
+    description: 'Premium heavyweight cotton tee with a relaxed oversized fit. Dropped shoulders and a clean neckline make this a versatile essential.',
+    category: 'Tops',
+    subcategory: 'T-Shirts',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#F5F0EB', '#2C2C2C', '#8B7E74'],
+    images: [
+      'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=600',
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600',
+    ],
+    rating: 4.6,
+    reviews: 89,
+    isFeatured: true,
+    gender: 'unisex',
+  },
+  {
+    id: 'p3',
+    name: 'High-Waist Wide Leg Pants',
+    brand: 'Zara',
+    price: 1999,
+    originalPrice: 2999,
+    description: 'Elegant high-waisted wide-leg trousers in a flowing fabric. Features a hidden side zip and pressed front creases.',
+    category: 'Bottoms',
+    subcategory: 'Pants',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['#2C2C2C', '#8B7E74', '#E8D5C4'],
+    images: [
+      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600',
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600',
+    ],
+    rating: 4.7,
+    reviews: 67,
+    discount: 23,
+    gender: 'women',
+  },
+  {
+    id: 'p4',
+    name: 'Wool Blend Coat',
+    brand: 'Zara',
+    price: 5999,
+    originalPrice: 7999,
+    description: 'A timeless wool-blend overcoat with a structured silhouette. Features notch lapels, double-breasted button closure, and deep pockets.',
+    category: 'Outerwear',
+    subcategory: 'Coats',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#8B7E74', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600',
+      'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=600',
+    ],
+    rating: 4.9,
+    reviews: 203,
+    isFeatured: true,
+    discount: 24,
+    gender: 'unisex',
+  },
+  {
+    id: 'p5',
+    name: 'Minimalist Leather Watch',
+    brand: 'Studio',
+    price: 3999,
+    description: 'A sleek minimalist watch with a genuine leather strap and brushed steel case. Japanese quartz movement. Water-resistant to 30m.',
+    category: 'Accessories',
+    subcategory: 'Watches',
+    sizes: ['One Size'],
+    colors: ['#8B6F5E', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600',
+      'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=600',
+    ],
+    rating: 4.5,
+    reviews: 156,
+    isNew: true,
+    gender: 'unisex',
+  },
+  {
+    id: 'p6',
+    name: 'Canvas Sneakers',
+    brand: 'Nike',
+    price: 2499,
+    description: 'Classic canvas sneakers with a modern twist. Features a cushioned insole, rubber outsole for grip, and clean minimal design.',
+    category: 'Shoes',
+    subcategory: 'Sneakers',
+    sizes: ['6', '7', '8', '9', '10', '11'],
+    colors: ['#F5F0EB', '#2C2C2C', '#C75B39'],
+    images: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
+      'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=600',
+    ],
+    rating: 4.4,
+    reviews: 92,
+    gender: 'unisex',
+  },
+  {
+    id: 'p7',
+    name: 'Leather Tote Bag',
+    brand: 'Mango',
+    price: 3999,
+    originalPrice: 5999,
+    description: 'Handcrafted genuine leather tote bag with a spacious interior. Features an interior zip pocket, magnetic snap closure.',
+    category: 'Bags',
+    subcategory: 'Totes',
+    sizes: ['One Size'],
+    colors: ['#8B6F5E', '#C75B39', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600',
+    ],
+    rating: 4.7,
+    reviews: 78,
+    isFeatured: true,
+    discount: 25,
+    gender: 'women',
+  },
+  {
+    id: 'p8',
+    name: 'Ribbed Knit Sweater',
+    brand: 'H&M',
+    price: 1499,
+    description: 'A soft ribbed knit sweater in a relaxed fit. Features a crew neckline, dropped shoulders, and slightly cropped length.',
+    category: 'Tops',
+    subcategory: 'Sweaters',
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    colors: ['#E8D5C4', '#C75B39', '#5B7C6B'],
+    images: [
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600',
+      'https://images.unsplash.com/photo-1434389677669-e08b4cda3a43?w=600',
+    ],
+    rating: 4.6,
+    reviews: 45,
+    isNew: true,
+    gender: 'women',
+  },
+  {
+    id: 'p9',
+    name: 'Silk Midi Skirt',
+    brand: 'Mango',
+    price: 1799,
+    description: 'An elegant silk midi skirt with a fluid drape. Features an elastic waistband and a bias-cut that flatters every figure.',
+    category: 'Bottoms',
+    subcategory: 'Skirts',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['#C75B39', '#2C2C2C', '#E8D5C4'],
+    images: [
+      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600',
+      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600',
+    ],
+    rating: 4.3,
+    reviews: 34,
+    gender: 'women',
+  },
+  {
+    id: 'p10',
+    name: 'Denim Jacket',
+    brand: 'H&M',
+    price: 2999,
+    originalPrice: 3999,
+    description: 'A classic denim jacket with a modern slim fit. Features traditional chest pockets, button closure, and a slightly faded wash.',
+    category: 'Outerwear',
+    subcategory: 'Jackets',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#6B8FAD', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=600',
+      'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=600',
+    ],
+    rating: 4.5,
+    reviews: 112,
+    discount: 29,
+    gender: 'unisex',
+  },
+  {
+    id: 'p11',
+    name: 'Gold Chain Necklace',
+    brand: 'Studio',
+    price: 1299,
+    description: 'A delicate layered gold chain necklace with a minimalist pendant. 18K gold-plated stainless steel. Hypoallergenic.',
+    category: 'Accessories',
+    subcategory: 'Jewelry',
+    sizes: ['One Size'],
+    colors: ['#D4A843'],
+    images: [
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600',
+      'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=600',
+    ],
+    rating: 4.2,
+    reviews: 56,
+    gender: 'women',
+  },
+  {
+    id: 'p12',
+    name: 'Yoga Leggings',
+    brand: 'Adidas',
+    price: 1499,
+    description: 'High-performance yoga leggings with four-way stretch. Features a high waist with a hidden pocket and moisture-wicking fabric.',
+    category: 'Activewear',
+    subcategory: 'Leggings',
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    colors: ['#2C2C2C', '#5B7C6B', '#C75B39'],
+    images: [
+      'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=600',
+      'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=600',
+    ],
+    rating: 4.8,
+    reviews: 187,
+    isFeatured: true,
+    isNew: true,
+    gender: 'women',
+  },
+  // ===== MEN'S PRODUCTS =====
+  {
+    id: 'p13',
+    name: 'Slim Fit Oxford Shirt',
+    brand: 'H&M',
+    price: 1299,
+    description: 'A crisp slim-fit Oxford shirt in premium cotton. Button-down collar, chest pocket, and a tailored fit.',
+    category: 'Tops',
+    subcategory: 'Shirts',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['#F5F0EB', '#6B8FAD', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600',
+      'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600',
+    ],
+    rating: 4.6,
+    reviews: 142,
+    isNew: true,
+    gender: 'men',
+  },
+  {
+    id: 'p14',
+    name: 'Tailored Chinos',
+    brand: 'Zara',
+    price: 1799,
+    originalPrice: 2499,
+    description: 'Modern slim-fit chinos in a stretch cotton blend. Features a zip fly, belt loops, and a clean tapered leg.',
+    category: 'Bottoms',
+    subcategory: 'Pants',
+    sizes: ['28', '30', '32', '34', '36'],
+    colors: ['#8B7E74', '#2C2C2C', '#3B4A3F'],
+    images: [
+      'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600',
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600',
+    ],
+    rating: 4.5,
+    reviews: 98,
+    discount: 25,
+    gender: 'men',
+  },
+  {
+    id: 'p15',
+    name: 'Leather Chronograph Watch',
+    brand: 'Studio',
+    price: 4999,
+    originalPrice: 6999,
+    description: 'A bold chronograph watch with brushed gunmetal case and genuine leather strap. Japanese quartz, 50m water resistance.',
+    category: 'Accessories',
+    subcategory: 'Watches',
+    sizes: ['One Size'],
+    colors: ['#2C2C2C', '#8B6F5E'],
+    images: [
+      'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=600',
+      'https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600',
+    ],
+    rating: 4.7,
+    reviews: 176,
+    isFeatured: true,
+    discount: 27,
+    gender: 'men',
+  },
+  {
+    id: 'p16',
+    name: 'Running Shoes Air Max',
+    brand: 'Nike',
+    price: 3999,
+    description: 'Lightweight running shoes with responsive Air Max cushioning. Breathable mesh upper and rubber waffle outsole.',
+    category: 'Shoes',
+    subcategory: 'Sneakers',
+    sizes: ['8', '9', '10', '11', '12'],
+    colors: ['#2C2C2C', '#F5F0EB', '#C75B39'],
+    images: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
+      'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600',
+    ],
+    rating: 4.8,
+    reviews: 234,
+    isFeatured: true,
+    isNew: true,
+    gender: 'men',
+  },
+  {
+    id: 'p17',
+    name: 'Bomber Jacket',
+    brand: 'Adidas',
+    price: 2999,
+    originalPrice: 4499,
+    description: 'Classic bomber jacket with a modern athletic fit. Ribbed collar, cuffs, and hem. Lightweight padding.',
+    category: 'Outerwear',
+    subcategory: 'Jackets',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#2C2C2C', '#3B4A3F'],
+    images: [
+      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600',
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600',
+    ],
+    rating: 4.4,
+    reviews: 87,
+    discount: 27,
+    gender: 'men',
+  },
+  {
+    id: 'p18',
+    name: 'Leather Belt',
+    brand: 'Zara',
+    price: 999,
+    description: 'Full-grain leather belt with a brushed silver buckle. Clean minimal design, 35mm width.',
+    category: 'Accessories',
+    subcategory: 'Belts',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#2C2C2C', '#8B6F5E'],
+    images: [
+      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600',
+      'https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=600',
+    ],
+    rating: 4.3,
+    reviews: 64,
+    gender: 'men',
+  },
+  // ===== NEW WOMEN'S =====
+  {
+    id: 'p19',
+    name: 'Floral Maxi Dress',
+    brand: 'Zara',
+    price: 2799,
+    originalPrice: 3499,
+    description: 'Flowing maxi dress with delicate floral print. V-neck, tiered skirt, and adjustable spaghetti straps.',
+    category: 'Dresses',
+    subcategory: 'Maxi Dresses',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['#E8D5C4', '#C75B39', '#5B7C6B'],
+    images: [
+      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600',
+      'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=600',
+    ],
+    rating: 4.6,
+    reviews: 93,
+    discount: 20,
+    isNew: true,
+    gender: 'women',
+  },
+  {
+    id: 'p20',
+    name: 'Crop Tank Top',
+    brand: 'H&M',
+    price: 599,
+    description: 'Ribbed crop tank top in soft organic cotton. Square neckline with a slim fit that pairs with everything.',
+    category: 'Tops',
+    subcategory: 'Tanks',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['#F5F0EB', '#2C2C2C', '#E8607C'],
+    images: [
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=600',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600',
+    ],
+    rating: 4.4,
+    reviews: 156,
+    gender: 'women',
+  },
+  {
+    id: 'p21',
+    name: 'Pleated Midi Skirt',
+    brand: 'Mango',
+    price: 1899,
+    originalPrice: 2499,
+    description: 'Elegant pleated midi skirt in flowing satin. High waist with hidden zip closure and a beautiful drape.',
+    category: 'Bottoms',
+    subcategory: 'Skirts',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['#8B7E74', '#2C2C2C', '#C75B39'],
+    images: [
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600',
+      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600',
+    ],
+    rating: 4.5,
+    reviews: 72,
+    discount: 24,
+    gender: 'women',
+  },
+  {
+    id: 'p22',
+    name: 'Strappy Block Heels',
+    brand: 'Zara',
+    price: 2699,
+    description: 'Elegant strappy block heel sandals in soft suede. 3-inch heel with cushioned insole for all-day comfort.',
+    category: 'Shoes',
+    subcategory: 'Heels',
+    sizes: ['5', '6', '7', '8', '9'],
+    colors: ['#2C2C2C', '#E8D5C4', '#C75B39'],
+    images: [
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600',
+      'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=600',
+    ],
+    rating: 4.3,
+    reviews: 48,
+    isNew: true,
+    gender: 'women',
+  },
+  {
+    id: 'p23',
+    name: 'Crossbody Sling Bag',
+    brand: 'H&M',
+    price: 1499,
+    description: 'Compact crossbody bag in textured faux leather. Adjustable strap, zip closure, and multiple card slots.',
+    category: 'Bags',
+    subcategory: 'Crossbody',
+    sizes: ['One Size'],
+    colors: ['#2C2C2C', '#8B6F5E', '#E8607C'],
+    images: [
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600',
+    ],
+    rating: 4.1,
+    reviews: 89,
+    gender: 'women',
+  },
+  {
+    id: 'p24',
+    name: 'Statement Jhumka Earrings',
+    brand: 'Studio',
+    price: 799,
+    description: 'Handcrafted oxidized silver jhumka earrings with intricate detailing. Lightweight and hypoallergenic.',
+    category: 'Accessories',
+    subcategory: 'Jewelry',
+    sizes: ['One Size'],
+    colors: ['#C0C0C0', '#D4A843'],
+    images: [
+      'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=600',
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600',
+    ],
+    rating: 4.7,
+    reviews: 134,
+    isFeatured: true,
+    gender: 'women',
+  },
+  // ===== NEW MEN'S =====
+  {
+    id: 'p25',
+    name: 'Polo T-Shirt',
+    brand: 'Nike',
+    price: 1499,
+    description: 'Classic Dri-FIT polo shirt with moisture-wicking technology. Ribbed collar and two-button placket.',
+    category: 'Tops',
+    subcategory: 'Polos',
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['#2C2C2C', '#F5F0EB', '#3A6DD4'],
+    images: [
+      'https://images.unsplash.com/photo-1581044777550-4cfa60707998?w=600',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600',
+    ],
+    rating: 4.5,
+    reviews: 198,
+    isNew: true,
+    gender: 'men',
+  },
+  {
+    id: 'p26',
+    name: 'Slim Fit Jeans',
+    brand: 'H&M',
+    price: 1799,
+    originalPrice: 2299,
+    description: 'Stretch denim jeans in a modern slim fit. Five-pocket style with a comfortable mid-rise waist.',
+    category: 'Bottoms',
+    subcategory: 'Jeans',
+    sizes: ['28', '30', '32', '34', '36'],
+    colors: ['#4A6A8A', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600',
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600',
+    ],
+    rating: 4.4,
+    reviews: 167,
+    discount: 22,
+    gender: 'men',
+  },
+  {
+    id: 'p27',
+    name: 'Suede Chelsea Boots',
+    brand: 'Zara',
+    price: 3499,
+    originalPrice: 4499,
+    description: 'Premium suede Chelsea boots with elastic side panels. Stacked heel and leather-lined interior.',
+    category: 'Shoes',
+    subcategory: 'Boots',
+    sizes: ['7', '8', '9', '10', '11'],
+    colors: ['#8B6F5E', '#2C2C2C'],
+    images: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
+      'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600',
+    ],
+    rating: 4.6,
+    reviews: 73,
+    discount: 22,
+    gender: 'men',
+  },
+  {
+    id: 'p28',
+    name: 'Sports Backpack',
+    brand: 'Adidas',
+    price: 2199,
+    description: 'Durable sports backpack with padded laptop compartment. Multiple zip pockets and adjustable straps.',
+    category: 'Bags',
+    subcategory: 'Backpacks',
+    sizes: ['One Size'],
+    colors: ['#2C2C2C', '#3B4A3F'],
+    images: [
+      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600',
+    ],
+    rating: 4.3,
+    reviews: 112,
+    gender: 'men',
+  },
+  {
+    id: 'p29',
+    name: 'Crew Neck Sweater',
+    brand: 'Uniqlo',
+    price: 1499,
+    description: 'Extra-fine merino wool crew neck sweater. Lightweight warmth with a clean, minimal aesthetic.',
+    category: 'Tops',
+    subcategory: 'Sweaters',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#2C2C2C', '#8B7E74', '#3B4A3F'],
+    images: [
+      'https://images.unsplash.com/photo-1480455624313-e29b44bbfde1?w=600',
+      'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=600',
+    ],
+    rating: 4.6,
+    reviews: 88,
+    isFeatured: true,
+    gender: 'men',
+  },
+  {
+    id: 'p30',
+    name: 'Jogger Pants',
+    brand: 'Nike',
+    price: 1799,
+    description: 'Tech fleece jogger pants with tapered leg. Zippered pockets and elastic waistband with drawstring.',
+    category: 'Bottoms',
+    subcategory: 'Joggers',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['#2C2C2C', '#8B7E74'],
+    images: [
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600',
+      'https://images.unsplash.com/photo-1581044777550-4cfa60707998?w=600',
+    ],
+    rating: 4.5,
+    reviews: 145,
+    isNew: true,
+    gender: 'men',
+  },
+];
+
+// Flash deals with time-limited extra discounts
+export function getFlashDeals(): FlashDeal[] {
+  const now = new Date();
+  const dealEnd = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+  return [
+    {product: PRODUCTS[0], dealPrice: 1799, endsAt: dealEnd, claimed: 72},
+    {product: PRODUCTS[3], dealPrice: 4499, endsAt: dealEnd, claimed: 45},
+    {product: PRODUCTS[6], dealPrice: 2999, endsAt: dealEnd, claimed: 83},
+    {product: PRODUCTS[9], dealPrice: 1999, endsAt: dealEnd, claimed: 56},
+    {product: PRODUCTS[2], dealPrice: 1499, endsAt: dealEnd, claimed: 38},
+  ];
+}
+
+export const MOCK_ORDERS = [
+  {
+    id: 'ORD001',
+    date: '2026-02-10',
+    status: 'Delivered',
+    items: [
+      {product: PRODUCTS[0], quantity: 1, size: 'M'},
+      {product: PRODUCTS[4], quantity: 1, size: 'One Size'},
+    ],
+    total: 6498,
+  },
+  {
+    id: 'ORD002',
+    date: '2026-02-05',
+    status: 'In Transit',
+    items: [
+      {product: PRODUCTS[3], quantity: 1, size: 'L'},
+    ],
+    total: 5999,
+  },
+  {
+    id: 'ORD003',
+    date: '2026-01-28',
+    status: 'Delivered',
+    items: [
+      {product: PRODUCTS[1], quantity: 2, size: 'M'},
+      {product: PRODUCTS[5], quantity: 1, size: '9'},
+    ],
+    total: 4497,
+  },
+];

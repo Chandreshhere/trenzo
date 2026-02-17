@@ -1,0 +1,31 @@
+diff --git a/node_modules/react-native-video/ios/Video/RCTVideoManager.swift b/node_modules/react-native-video/ios/Video/RCTVideoManager.swift
+index b408e96..62dac3a 100644
+--- a/node_modules/react-native-video/ios/Video/RCTVideoManager.swift
++++ b/node_modules/react-native-video/ios/Video/RCTVideoManager.swift
+@@ -4,21 +4,22 @@ import React
+ @objc(RCTVideoManager)
+ class RCTVideoManager: RCTViewManager {
+     override func view() -> UIView {
+-        return RCTVideo(eventDispatcher: (RCTBridge.current().eventDispatcher() as! RCTEventDispatcher))
++        let dispatcher = RCTBridge.current()?.eventDispatcher() as? RCTEventDispatcher
++        return RCTVideo(eventDispatcher: dispatcher)
+     }
+ 
+     func methodQueue() -> DispatchQueue {
+-        return bridge.uiManager.methodQueue
++        return bridge?.uiManager?.methodQueue ?? DispatchQueue.main
+     }
+ 
+     func performOnVideoView(withReactTag reactTag: NSNumber, callback: @escaping (RCTVideo?) -> Void) {
+         DispatchQueue.main.async { [weak self] in
+-            guard let self else {
++            guard let self, let uiManager = self.bridge?.uiManager else {
+                 callback(nil)
+                 return
+             }
+ 
+-            let view = self.bridge.uiManager.view(forReactTag: reactTag)
++            let view = uiManager.view(forReactTag: reactTag)
+ 
+             guard let videoView = view as? RCTVideo else {
+                 DebugLog("Invalid view returned from registry, expecting RCTVideo, got: \(String(describing: self.view))")
