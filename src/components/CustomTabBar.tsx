@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import {COLORS, FONT_WEIGHTS} from '../utils/theme';
+import {FONT_WEIGHTS} from '../utils/theme';
 import {useApp} from '../context/AppContext';
 import {useTabBar} from '../context/TabBarContext';
+import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette, GenderPalette} from '../context/GenderPaletteContext';
 import Icon from './Icon';
 
 const {width} = Dimensions.get('window');
@@ -38,6 +40,10 @@ interface Props {
 export default function CustomTabBar({state, navigation}: Props) {
   const {cartItemCount} = useApp();
   const {tabBarTranslateY} = useTabBar();
+  const {colors, isDark} = useTheme();
+  const {activeGender, palette: gp} = useGenderPalette();
+
+  const styles = useMemo(() => createStyles(colors, isDark, gp), [colors, isDark, activeGender]);
 
   const tabAnims = useRef(
     TABS.map((_, i) => ({
@@ -104,7 +110,7 @@ export default function CustomTabBar({state, navigation}: Props) {
         {TABS.map((tab, index) => {
           const isCart = tab.name === 'CartTab';
 
-          // Crossfade icon color: gray when inactive, white when active
+          // Crossfade icon color: gray when inactive, themed when active
           const grayOpacity = tabAnims[index].circleScale.interpolate({
             inputRange: [0, 1],
             outputRange: [1, 0],
@@ -138,15 +144,15 @@ export default function CustomTabBar({state, navigation}: Props) {
                 {/* Gray icon (inactive) */}
                 <Animated.View
                   style={[styles.iconPos, {opacity: grayOpacity}]}>
-                  <Icon name={tab.icon} size={22} color="#ABABAB" />
+                  <Icon name={tab.icon} size={22} color={gp.light} />
                 </Animated.View>
-                {/* White icon (active) */}
+                {/* Active icon (dark on accent) */}
                 <Animated.View
                   style={[
                     styles.iconPos,
                     {opacity: tabAnims[index].circleScale},
                   ]}>
-                  <Icon name={tab.icon} size={22} color="#FFFFFF" />
+                  <Icon name={tab.icon} size={22} color={gp.lightest} />
                 </Animated.View>
                 {/* Cart badge */}
                 {isCart && cartItemCount > 0 && (
@@ -164,7 +170,7 @@ export default function CustomTabBar({state, navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -174,15 +180,20 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: gp.dark,
     height: BAR_HEIGHT,
     alignItems: 'center',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'visible',
+    shadowColor: gp.mid,
+    shadowOffset: {width: 0, height: -3},
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   bottomFill: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: gp.dark,
     height: BOTTOM_INSET,
   },
   tabButton: {
@@ -204,15 +215,15 @@ const styles = StyleSheet.create({
     width: NOTCH_BG_SIZE,
     height: NOTCH_BG_SIZE,
     borderRadius: NOTCH_BG_SIZE / 2,
-    backgroundColor: COLORS.background,
+    backgroundColor: gp.dark,
   },
   activeCircle: {
     position: 'absolute',
     width: CIRCLE_SIZE,
     height: CIRCLE_SIZE,
     borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: COLORS.tabBarActive,
-    shadowColor: COLORS.tabBarActive,
+    backgroundColor: gp.mid,
+    shadowColor: gp.mid,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -225,7 +236,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: COLORS.tabBarActive,
+    backgroundColor: gp.mid,
     borderRadius: 9,
     minWidth: 18,
     height: 18,
@@ -233,11 +244,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: gp.dark,
   },
   cartBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
+    color: gp.lightest,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
   },
 });

@@ -1,17 +1,18 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useMemo} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Animated,
   Dimensions,
   StatusBar,
 } from 'react-native';
+import ReAnimated, {FadeInDown, FadeInUp} from 'react-native-reanimated';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product} from '../data/products';
 import ProductCard from '../components/ProductCard';
+import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 const {width} = Dimensions.get('window');
@@ -26,33 +27,28 @@ export default function CategoryProductsScreen({route, navigation}: Props) {
     categoryName: string;
     products: Product[];
   };
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={20} color={COLORS.black} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{categoryName}</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <ReAnimated.View entering={FadeInUp.duration(350)}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <View style={styles.placeholder} />
+        </View>
+      </ReAnimated.View>
 
-      <Animated.ScrollView
-        style={{opacity: fadeAnim}}
+      <ReAnimated.ScrollView
+        entering={FadeInDown.delay(100).duration(400).springify()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
         <View style={{height: 8}} />
@@ -68,21 +64,21 @@ export default function CategoryProductsScreen({route, navigation}: Props) {
         {products.length === 0 && (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
-              <Icon name="search" size={36} color={COLORS.midGray} />
+              <Icon name="search" size={36} color={colors.textTertiary} />
             </View>
             <Text style={styles.emptyText}>No items in this category yet</Text>
           </View>
         )}
         <View style={{height: 40}} />
-      </Animated.ScrollView>
+      </ReAnimated.ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -96,7 +92,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -104,7 +100,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   placeholder: {width: 40},
   content: {
@@ -112,7 +108,7 @@ const styles = StyleSheet.create({
   },
   resultCount: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginBottom: 16,
     fontWeight: FONT_WEIGHTS.medium,
   },
@@ -133,14 +129,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   emptyText: {
     fontSize: SIZES.body,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
   },
 });

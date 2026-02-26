@@ -19,6 +19,8 @@ import {Product, formatPrice} from '../data/products';
 import {useHeroTransition} from '../context/HeroTransitionContext';
 import {useApp} from '../context/AppContext';
 import Icon from './Icon';
+import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette, GenderPalette} from '../context/GenderPaletteContext';
 
 const {width: SW, height: SH} = Dimensions.get('window');
 const TOP_INSET = Platform.OS === 'ios' ? 54 : 36;
@@ -35,6 +37,9 @@ const PEEK = 16;
 const CARD_GAP = 16;
 
 export default function ProductDetailOverlay() {
+  const {colors, isDark} = useTheme();
+  const {activeGender, palette: gp} = useGenderPalette();
+  const st = useMemo(() => createStyles(colors, isDark, gp), [colors, isDark, activeGender]);
   const {isOpen, product, products, sourceRect, closeProduct} = useHeroTransition();
   const {state, dispatch} = useApp();
 
@@ -431,7 +436,7 @@ export default function ProductDetailOverlay() {
       {!expanded && (
         <Animated.View style={[st.closeBtn, {opacity: bgOpacity}]}>
           <TouchableOpacity style={st.closeBtnInner} onPress={handleClose}>
-            <Icon name="x" size={20} color={COLORS.white} />
+            <Icon name="x" size={20} color={gp.lightest} />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -494,11 +499,11 @@ export default function ProductDetailOverlay() {
         {/* Top bar (collapse + fav) - appears during expansion */}
         <Animated.View style={[st.topBar, {opacity: topBarOpacity}]} pointerEvents={expanded ? 'auto' : 'none'}>
           <TouchableOpacity style={st.topBtn} onPress={handleCollapse}>
-            <Icon name="chevron-down" size={22} color={COLORS.white} />
+            <Icon name="chevron-down" size={22} color={gp.lightest} />
           </TouchableOpacity>
           <TouchableOpacity style={st.topBtn} onPress={handleToggleFavorite}>
             <Icon name="heart" size={20}
-              color={isFavorite ? '#1A3B8A' : COLORS.white}
+              color={isFavorite ? '#FF4757' : gp.light}
               family={isFavorite ? 'ionicons' : 'feather'} />
           </TouchableOpacity>
         </Animated.View>
@@ -531,7 +536,7 @@ export default function ProductDetailOverlay() {
             <Animated.View style={[st.imgFavWrap, {opacity: cardFavOpacity}]} pointerEvents={expanded ? 'none' : 'auto'}>
               <TouchableOpacity style={st.imgFav} onPress={handleToggleFavorite}>
                 <Icon name="heart" size={16}
-                  color={isFavorite ? '#1A3B8A' : 'rgba(255,255,255,0.85)'}
+                  color={isFavorite ? '#FF4757' : gp.light}
                   family={isFavorite ? 'ionicons' : 'feather'} />
               </TouchableOpacity>
             </Animated.View>
@@ -568,9 +573,9 @@ export default function ProductDetailOverlay() {
             <Animated.View style={[st.swipeArea, {opacity: swipeHintOpacity}]} pointerEvents={expanded ? 'none' : 'auto'}>
               {products.length > 1 && (
                 <View style={st.swipeHint}>
-                  <Icon name="chevron-left" size={14} color={currentIndex > 0 ? COLORS.midGray : 'transparent'} />
+                  <Icon name="chevron-left" size={14} color={currentIndex > 0 ? gp.light : 'transparent'} />
                   <Text style={st.swipeText}>Swipe to browse</Text>
-                  <Icon name="chevron-right" size={14} color={currentIndex < products.length - 1 ? COLORS.midGray : 'transparent'} />
+                  <Icon name="chevron-right" size={14} color={currentIndex < products.length - 1 ? gp.light : 'transparent'} />
                 </View>
               )}
               <View style={st.scrollBar}><View style={st.scrollBarInner} /></View>
@@ -607,7 +612,7 @@ export default function ProductDetailOverlay() {
               </View>
 
               <View style={st.delCard}>
-                <Icon name="zap" size={16} color={COLORS.primary} />
+                <Icon name="zap" size={16} color={gp.mid} />
                 <View style={{flex: 1}}>
                   <Text style={st.delTitle}>Express Delivery</Text>
                   <Text style={st.delSub}>Get it within 30 minutes</Text>
@@ -629,9 +634,9 @@ export default function ProductDetailOverlay() {
             style={[st.cartBtn, justAdded && st.cartBtnOk]}
             onPress={handleAddToCart} activeOpacity={0.85}>
             {justAdded ? (
-              <><Icon name="check" size={18} color={COLORS.white} /><Text style={st.cartTxt}>Added!</Text></>
+              <><Icon name="check" size={18} color={gp.lightest} /><Text style={st.cartTxt}>Added!</Text></>
             ) : (
-              <><Icon name="shopping-bag" size={18} color={COLORS.white} /><Text style={st.cartTxt}>Add to Cart</Text></>
+              <><Icon name="shopping-bag" size={18} color={gp.lightest} /><Text style={st.cartTxt}>Add to Cart</Text></>
             )}
           </TouchableOpacity>
         </Animated.View>
@@ -649,7 +654,7 @@ function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 155;
 }
 
-const st = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleSheet.create({
   overlay: {...StyleSheet.absoluteFillObject, zIndex: 1000},
   bg: {...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)'},
 
@@ -662,10 +667,10 @@ const st = StyleSheet.create({
     position: 'absolute', top: TOP_INSET + 8, alignSelf: 'center', zIndex: 1010,
     backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12,
   },
-  pageText: {color: COLORS.white, fontSize: 12, fontWeight: FONT_WEIGHTS.semiBold, fontFamily: FONTS.sans},
+  pageText: {color: gp.lightest, fontSize: 12, fontWeight: FONT_WEIGHTS.semiBold, fontFamily: FONTS.sans},
 
   card: {
-    position: 'absolute', overflow: 'hidden', backgroundColor: COLORS.cardBg, zIndex: 1005,
+    position: 'absolute', overflow: 'hidden', backgroundColor: gp.dark, zIndex: 1005,
     ...SHADOWS.large,
   },
 
@@ -680,19 +685,19 @@ const st = StyleSheet.create({
   },
 
   // Image
-  imgWrap: {backgroundColor: COLORS.cream, overflow: 'hidden'},
+  imgWrap: {backgroundColor: gp.lightest + '18', overflow: 'hidden'},
   imgFull: {width: '100%', height: '100%'},
   imgDots: {
     position: 'absolute', bottom: 12, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'center', gap: 5,
   },
-  imgDot: {width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)'},
-  imgDotActive: {width: 18, backgroundColor: COLORS.white},
+  imgDot: {width: 6, height: 6, borderRadius: 3, backgroundColor: gp.light},
+  imgDotActive: {width: 18, backgroundColor: gp.mid},
   badge: {
     position: 'absolute', top: 12, left: 12,
-    backgroundColor: '#1A3B8A', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    backgroundColor: gp.mid, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
   },
-  badgeText: {color: COLORS.white, fontSize: 11, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans},
+  badgeText: {color: gp.lightest, fontSize: 11, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans},
   imgFavWrap: {position: 'absolute', top: 12, right: 12},
   imgFav: {
     width: 36, height: 36, borderRadius: 18,
@@ -702,66 +707,66 @@ const st = StyleSheet.create({
   // Content
   content: {paddingHorizontal: 20, paddingTop: 12},
   pullInd: {alignItems: 'center', paddingBottom: 6},
-  pullBar: {width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.lightGray},
+  pullBar: {width: 36, height: 4, borderRadius: 2, backgroundColor: gp.lightest + '18'},
 
   brand: {
-    fontSize: 11, color: COLORS.midGray, fontFamily: FONTS.sans,
+    fontSize: 11, color: gp.light, fontFamily: FONTS.sans,
     fontWeight: FONT_WEIGHTS.medium, textTransform: 'uppercase', letterSpacing: 1,
   },
   name: {
     fontSize: SIZES.h4, fontFamily: FONTS.serif, fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black, marginTop: 4, lineHeight: 24,
+    color: gp.lightest, marginTop: 4, lineHeight: 24,
   },
   priceRow: {flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8},
-  price: {fontSize: SIZES.h3, fontWeight: FONT_WEIGHTS.bold, color: COLORS.black, fontFamily: FONTS.sans},
-  origPrice: {fontSize: SIZES.body, color: COLORS.midGray, textDecorationLine: 'line-through', fontFamily: FONTS.sans},
-  discBadge: {backgroundColor: 'rgba(26,59,138,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6},
-  discText: {fontSize: 11, fontWeight: FONT_WEIGHTS.bold, color: '#1A3B8A', fontFamily: FONTS.sans},
+  price: {fontSize: SIZES.h3, fontWeight: FONT_WEIGHTS.bold, color: gp.lightest, fontFamily: FONTS.sans},
+  origPrice: {fontSize: SIZES.body, color: gp.light, textDecorationLine: 'line-through', fontFamily: FONTS.sans},
+  discBadge: {backgroundColor: gp.mid, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6},
+  discText: {fontSize: 11, fontWeight: FONT_WEIGHTS.bold, color: gp.lightest, fontFamily: FONTS.sans},
   ratingRow: {flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4},
-  rating: {fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold, color: COLORS.charcoal, fontFamily: FONTS.sans},
-  reviews: {fontSize: SIZES.bodySmall, color: COLORS.midGray, fontFamily: FONTS.sans},
+  rating: {fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold, color: gp.lightest, fontFamily: FONTS.sans},
+  reviews: {fontSize: SIZES.bodySmall, color: gp.light, fontFamily: FONTS.sans},
 
   // Swipe hint area (card mode)
   swipeArea: {marginTop: 'auto', paddingTop: 16, paddingBottom: 14, alignItems: 'center'},
   swipeHint: {flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10},
-  swipeText: {fontSize: 12, color: COLORS.midGray, fontFamily: FONTS.sans},
+  swipeText: {fontSize: 12, color: gp.light, fontFamily: FONTS.sans},
   scrollBar: {alignItems: 'center'},
-  scrollBarInner: {width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.lightGray},
+  scrollBarInner: {width: 40, height: 4, borderRadius: 2, backgroundColor: gp.lightest + '18'},
 
   // Detail sections
   secLabel: {
-    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold, color: COLORS.charcoal,
+    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold, color: gp.lightest,
     fontFamily: FONTS.sans, marginTop: 22, marginBottom: 10,
   },
-  desc: {fontSize: SIZES.body, color: COLORS.darkGray, fontFamily: FONTS.sans, lineHeight: 22},
+  desc: {fontSize: SIZES.body, color: gp.light, fontFamily: FONTS.sans, lineHeight: 22},
   optRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
   sizeChip: {
     paddingHorizontal: 18, paddingVertical: 10, borderRadius: SIZES.radiusMd,
-    backgroundColor: COLORS.cardBg, borderWidth: 1.5, borderColor: COLORS.lightGray,
+    backgroundColor: gp.lightest + '18', borderWidth: 1.5, borderColor: gp.lightest + '18',
   },
-  sizeAct: {borderColor: COLORS.primary, backgroundColor: 'rgba(26,59,138,0.15)'},
-  sizeTxt: {fontSize: SIZES.bodySmall, fontWeight: FONT_WEIGHTS.medium, color: COLORS.darkGray, fontFamily: FONTS.sans},
-  sizeTxtAct: {color: COLORS.primary, fontWeight: FONT_WEIGHTS.bold},
+  sizeAct: {borderColor: gp.mid, backgroundColor: gp.mid},
+  sizeTxt: {fontSize: SIZES.bodySmall, fontWeight: FONT_WEIGHTS.medium, color: gp.lightest, fontFamily: FONTS.sans},
+  sizeTxtAct: {color: gp.lightest, fontWeight: FONT_WEIGHTS.bold},
   colorChip: {
     width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'transparent',
   },
-  colorAct: {borderColor: COLORS.charcoal},
+  colorAct: {borderColor: gp.mid},
   delCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.cardBg,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: gp.lightest + '18',
     padding: 14, borderRadius: SIZES.radiusMd, marginTop: 22, gap: 12,
   },
-  delTitle: {fontSize: SIZES.bodySmall, fontWeight: FONT_WEIGHTS.semiBold, color: COLORS.charcoal, fontFamily: FONTS.sans},
-  delSub: {fontSize: SIZES.caption, color: COLORS.midGray, fontFamily: FONTS.sans, marginTop: 2},
+  delTitle: {fontSize: SIZES.bodySmall, fontWeight: FONT_WEIGHTS.semiBold, color: gp.lightest, fontFamily: FONTS.sans},
+  delSub: {fontSize: SIZES.caption, color: gp.light, fontFamily: FONTS.sans, marginTop: 2},
 
   // Peek cards (adjacent carousel cards)
   peekCard: {
     position: 'absolute', width: CARD_W, zIndex: 1004,
-    backgroundColor: COLORS.cardBg, borderRadius: CARD_R, overflow: 'hidden',
+    backgroundColor: gp.dark, borderRadius: CARD_R, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  peekImg: {backgroundColor: COLORS.cream, overflow: 'hidden'},
+  peekImg: {backgroundColor: gp.lightest + '18', overflow: 'hidden'},
   peekContent: {paddingHorizontal: 20, paddingTop: 12},
 
   // Bottom bar
@@ -770,14 +775,14 @@ const st = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: SIZES.screenPadding, paddingTop: 14,
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
-    backgroundColor: COLORS.cardBg, borderTopWidth: 1, borderTopColor: COLORS.lightGray,
+    backgroundColor: gp.lightest + '18', borderTopWidth: 1, borderTopColor: gp.lightest + '18',
   },
-  btmLabel: {fontSize: SIZES.caption, color: COLORS.midGray, fontFamily: FONTS.sans},
-  btmPrice: {fontSize: SIZES.h3, fontWeight: FONT_WEIGHTS.bold, color: COLORS.black, fontFamily: FONTS.sans},
+  btmLabel: {fontSize: SIZES.caption, color: gp.light, fontFamily: FONTS.sans},
+  btmPrice: {fontSize: SIZES.h3, fontWeight: FONT_WEIGHTS.bold, color: gp.lightest, fontFamily: FONTS.sans},
   cartBtn: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: gp.mid,
     paddingHorizontal: 28, paddingVertical: 14, borderRadius: SIZES.radiusFull, gap: 8, ...SHADOWS.medium,
   },
-  cartBtnOk: {backgroundColor: COLORS.success},
-  cartTxt: {fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.bold, color: COLORS.white, fontFamily: FONTS.sans},
+  cartBtnOk: {backgroundColor: colors.success},
+  cartTxt: {fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.bold, color: gp.lightest, fontFamily: FONTS.sans},
 });

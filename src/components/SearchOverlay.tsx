@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useMemo} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {PRODUCTS, BRANDS, COLLECTIONS, formatPrice} from '../data/products';
 import ProductCard from './ProductCard';
 import Icon from './Icon';
 import {useRecentSearches} from '../hooks/useRecentSearches';
+import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette, GenderPalette} from '../context/GenderPaletteContext';
 
 const {width} = Dimensions.get('window');
 const CARD_WIDTH = (width - SIZES.screenPadding * 2 - 12) / 2;
@@ -67,6 +69,9 @@ interface SearchOverlayProps {
 }
 
 export default function SearchOverlay({visible, progress, onClose, navigation}: SearchOverlayProps) {
+  const {colors, isDark} = useTheme();
+  const {activeGender, palette: gp} = useGenderPalette();
+  const styles = useMemo(() => createStyles(colors, isDark, gp), [colors, isDark, activeGender]);
   const [genderTab, setGenderTab] = useState<'her' | 'him'>('her');
   const {recentSearches, addSearch, removeSearch, clearAll} = useRecentSearches();
 
@@ -162,7 +167,7 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
                 <TouchableOpacity key={i} style={styles.recentTag} onPress={() => handleRecentTap(term)}>
                   <Text style={styles.recentTagText}>{term}</Text>
                   <TouchableOpacity onPress={() => removeSearch(term)} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-                    <Icon name="x" size={10} color={COLORS.midGray} />
+                    <Icon name="x" size={10} color={gp.light} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
@@ -184,8 +189,8 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
               <View style={styles.trendingDivider} />
               <Text style={styles.trendingTerm}>{item.term}</Text>
               <View style={styles.trendingMeta}>
-                <Icon name="trending-up" size={11} color={i < 3 ? COLORS.primary : COLORS.midGray} />
-                <Text style={[styles.trendingCount, i < 3 && {color: COLORS.primary}]}>{item.count}</Text>
+                <Icon name="trending-up" size={11} color={i < 3 ? gp.mid : gp.light} />
+                <Text style={[styles.trendingCount, i < 3 && {color: gp.mid}]}>{item.count}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -201,7 +206,7 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
                   <View style={styles.catCardOverlay}>
                     <Text style={styles.catCardName}>{cat.name}</Text>
                     <View style={styles.catCardArrow}>
-                      <Icon name="arrow-up-right" size={14} color={COLORS.white} />
+                      <Icon name="arrow-up-right" size={14} color={gp.lightest} />
                     </View>
                   </View>
                 </ImageBackground>
@@ -223,7 +228,7 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
                 <Text style={styles.collectionSub}>{COLLECTIONS[0].subtitle}</Text>
                 <View style={styles.collectionCta}>
                   <Text style={styles.collectionCtaText}>Explore Now</Text>
-                  <Icon name="arrow-right" size={14} color={COLORS.white} />
+                  <Icon name="arrow-right" size={14} color={gp.lightest} />
                 </View>
               </View>
             </ImageBackground>
@@ -303,7 +308,7 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
                 <Text style={styles.brandHeroTagline}>{b[0]?.tagline || 'Fashion & Quality'}</Text>
                 <View style={styles.brandHeroBtn}>
                   <Text style={styles.brandHeroBtnText}>Explore</Text>
-                  <Icon name="arrow-right" size={12} color="#FFF" />
+                  <Icon name="arrow-right" size={12} color={gp.lightest} />
                 </View>
               </View>
             </ImageBackground>
@@ -375,7 +380,7 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
                 <Text style={styles.miniBannerSub}>{COLLECTIONS[3].subtitle}</Text>
                 <View style={styles.collectionCta}>
                   <Text style={styles.collectionCtaText}>Shop Now</Text>
-                  <Icon name="arrow-right" size={12} color={COLORS.white} />
+                  <Icon name="arrow-right" size={12} color={gp.lightest} />
                 </View>
               </View>
             </ImageBackground>
@@ -388,10 +393,10 @@ export default function SearchOverlay({visible, progress, onClose, navigation}: 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: gp.dark,
   },
   scrollContent: {
     flex: 1,
@@ -408,7 +413,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: gp.mid,
     letterSpacing: 2.5,
     paddingHorizontal: SIZES.screenPadding,
     marginBottom: 10,
@@ -429,13 +434,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: gp.lightest,
   },
   clearText: {
     fontSize: 12,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: gp.mid,
   },
   recentTags: {
     flexDirection: 'row',
@@ -448,16 +453,16 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: COLORS.white,
+    backgroundColor: gp.light + '30',
     borderRadius: SIZES.radiusSm,
-    borderBottomWidth: 1.5,
-    borderBottomColor: COLORS.border,
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   recentTagText: {
     fontSize: 13,
     fontFamily: 'Poppins',
     fontWeight: FONT_WEIGHTS.regular,
-    color: COLORS.charcoal,
+    color: gp.light,
   },
 
   // --- Trending chart ---
@@ -474,13 +479,13 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#1A3B8A',
+    backgroundColor: gp.mid,
   },
   trendingHeaderText: {
     fontSize: 15,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: COLORS.charcoal,
+    color: gp.lightest,
   },
   trendingRow: {
     flexDirection: 'row',
@@ -488,24 +493,24 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: SIZES.screenPadding,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: gp.lightest + '18',
   },
   trendingRank: {
     fontSize: 16,
     fontWeight: FONT_WEIGHTS.light,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: gp.light,
     width: 24,
     textAlign: 'center',
   },
   trendingRankTop: {
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.primary,
+    color: gp.mid,
   },
   trendingDivider: {
     width: 1,
     height: 18,
-    backgroundColor: COLORS.border,
+    backgroundColor: gp.light + '30',
     marginHorizontal: 12,
   },
   trendingTerm: {
@@ -513,7 +518,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: gp.lightest,
   },
   trendingMeta: {
     flexDirection: 'row',
@@ -524,7 +529,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: gp.light,
   },
 
   // --- Category tall cards ---
@@ -558,7 +563,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: gp.light + '50',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -580,7 +585,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   collectionTag: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
     color: 'rgba(255,255,255,0.5)',
@@ -591,7 +596,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: COLORS.white,
+    color: '#FFFFFF',
   },
   collectionSub: {
     fontSize: 13,
@@ -610,7 +615,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: COLORS.white,
+    color: '#FFFFFF',
     textDecorationLine: 'underline',
   },
 
@@ -631,17 +636,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: gp.light,
     paddingBottom: 4,
   },
   genderTextActive: {
-    color: COLORS.charcoal,
+    color: gp.lightest,
     fontWeight: FONT_WEIGHTS.bold,
   },
   genderUnderline: {
     width: '100%',
     height: 2.5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: gp.mid,
   },
   genderHeroWrap: {
     marginHorizontal: SIZES.screenPadding,
@@ -681,16 +686,16 @@ const styles = StyleSheet.create({
     width: 140,
     height: 180,
     borderRadius: SIZES.radiusSm,
-    backgroundColor: COLORS.cream,
+    backgroundColor: gp.lightest + '18',
   },
   popProductInfo: {
     paddingTop: 8,
   },
   popProductBrand: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: gp.mid,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
@@ -698,7 +703,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: gp.lightest,
     marginTop: 1,
   },
   popProductPriceRow: {
@@ -711,13 +716,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: gp.lightest,
   },
   popProductOldPrice: {
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: gp.light,
     textDecorationLine: 'line-through',
   },
 
@@ -730,7 +735,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: COLORS.black,
+    color: gp.lightest,
     marginTop: -2,
   },
   brandHeroBanner: {
@@ -748,7 +753,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   brandHeroTag: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
     color: 'rgba(255,255,255,0.55)',
@@ -772,14 +777,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: gp.light + '30',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 6,
     alignSelf: 'flex-start',
     marginTop: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: gp.light + '50',
   },
   brandHeroBtnText: {
     fontSize: 12,
@@ -814,14 +819,14 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   brandCollageSub: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
     color: 'rgba(255,255,255,0.6)',
     marginTop: 1,
   },
   brandPromoTile: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: gp.mid,
     justifyContent: 'center',
     padding: 18,
   },
@@ -829,7 +834,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(0,0,0,0.4)',
     letterSpacing: 3,
     marginBottom: 3,
   },
@@ -837,20 +842,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: '#FFF',
+    color: gp.lightest,
   },
   brandPromoSub: {
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(0,0,0,0.6)',
     marginTop: 3,
   },
   brandPromoBtn: {
-    backgroundColor: '#FFF',
+    backgroundColor: gp.lightest,
     paddingVertical: 7,
     paddingHorizontal: 14,
-    borderRadius: 4,
+    borderRadius: 6,
     alignSelf: 'flex-start',
     marginTop: 10,
   },
@@ -858,7 +863,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: gp.mid,
   },
 
   // --- Bottom mini banner ---
@@ -876,7 +881,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: COLORS.white,
+    color: '#FFFFFF',
   },
   miniBannerSub: {
     fontSize: 11,

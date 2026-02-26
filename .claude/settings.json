@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk 'NR>=1 && NR<=1673 { gsub\\(/gp\\\\.mid/, \"\"genderPalette.mid\"\"\\); gsub\\(/gp\\\\.light/, \"\"genderPalette.light\"\"\\); gsub\\(/gp\\\\.dark/, \"\"genderPalette.dark\"\"\\); gsub\\(/gp\\\\.lightest/, \"\"genderPalette.lightest\"\"\\) } { print }' /Users/moon/Documents/trenzo/trenzo/src/screens/HomeScreen.tsx)",
+      "Bash(awk 'NR>=1 && NR<=1673 { gsub\\(/colors\\\\.accentText/, \"\"genderPalette.lightest\"\"\\); gsub\\(/colors\\\\.accent\\([^T]\\)/, \"\"genderPalette.mid\\\\\\\\1\"\"\\) } { print }' /Users/moon/Documents/trenzo/trenzo/src/screens/HomeScreen.tsx)",
+      "Bash(awk ':*)",
+      "WebFetch(domain:knotnow.co)",
+      "WebFetch(domain:play.google.com)",
+      "WebFetch(domain:cdn.brandfetch.io)",
+      "WebFetch(domain:pngimg.com)"
+    ]
+  }
+}

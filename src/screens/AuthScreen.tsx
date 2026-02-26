@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -16,23 +16,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 const {width: SW, height: SH} = Dimensions.get('window');
-
-const C = {
-  dark: '#0D0D0D',
-  darkSurface: '#1A1A1A',
-  glass: 'rgba(255,255,255,0.07)',
-  glassBorder: 'rgba(255,255,255,0.12)',
-  white: '#F5F5F7',
-  textDark: '#F5F5F7',
-  textWhite: '#F5F5F7',
-  textMuted: 'rgba(255,255,255,0.45)',
-  textLabel: 'rgba(255,255,255,0.35)',
-  accent: COLORS.primary,
-  accentLight: COLORS.primaryLight,
-};
 
 const SOCIAL_PROVIDERS = [
   {key: 'Google', icon: 'logo-google', family: 'ionicons' as const},
@@ -48,7 +35,24 @@ interface Props {
 
 export default function AuthScreen({route, navigation}: Props) {
   const {dispatch} = useApp();
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const returnTo = route.params?.returnTo;
+
+  const C = {
+    dark: colors.background,
+    darkSurface: colors.background,
+    glass: colors.glassLight,
+    glassBorder: colors.glassLight,
+    white: colors.textPrimary,
+    textDark: colors.textPrimary,
+    textWhite: colors.textPrimary,
+    textMuted: colors.textTertiary,
+    textLabel: colors.textTertiary,
+    accent: colors.accent,
+    accentLight: colors.accent,
+    accentText: colors.accentText,
+  };
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -135,9 +139,9 @@ export default function AuthScreen({route, navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* ===== WHITE TOP with curved bottom ===== */}
+      {/* ===== TOP SECTION with curved bottom ===== */}
       <View style={styles.whiteTop}>
         {/* Top bar: icon + trenzo | Sign Up */}
         <View style={styles.topBar}>
@@ -243,7 +247,7 @@ export default function AuthScreen({route, navigation}: Props) {
               onPress={handleAuth}
               disabled={loading}
               activeOpacity={0.8}>
-              <Icon name="log-in" size={18} color={C.textWhite} />
+              <Icon name="log-in" size={18} color={C.accentText} />
               <Text style={styles.authBtnText}>
                 {loading
                   ? 'Please wait...'
@@ -299,15 +303,15 @@ export default function AuthScreen({route, navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.dark,
+    backgroundColor: colors.background,
   },
 
   // ===== TOP SECTION =====
   whiteTop: {
-    backgroundColor: C.darkSurface,
+    backgroundColor: colors.background,
     paddingHorizontal: SIZES.screenPadding,
     paddingBottom: 32,
     borderBottomLeftRadius: 40,
@@ -329,7 +333,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -337,7 +341,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: C.textDark,
+    color: colors.textPrimary,
     letterSpacing: 1.5,
   },
   toggleBtn: {
@@ -347,7 +351,7 @@ const styles = StyleSheet.create({
   },
   toggleBtnText: {
     fontSize: SIZES.body,
-    color: C.textDark,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: FONTS.sansMedium,
   },
@@ -355,7 +359,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sansBold,
-    color: C.textDark,
+    color: colors.textPrimary,
     marginTop: 28,
   },
 
@@ -377,7 +381,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: SIZES.caption,
-    color: C.textLabel,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.medium,
     marginBottom: 8,
     marginLeft: 6,
@@ -385,18 +389,18 @@ const styles = StyleSheet.create({
   glassInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.glass,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusFull,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: C.glassBorder,
+    borderColor: colors.glassLight,
     gap: 10,
   },
   input: {
     flex: 1,
     paddingVertical: 15,
     fontSize: SIZES.body,
-    color: C.textWhite,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.regular,
   },
   forgotBtn: {
@@ -406,13 +410,13 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: SIZES.bodySmall,
-    color: C.textMuted,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
   },
 
   // CTA button
   authBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     borderRadius: SIZES.radiusFull,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -425,7 +429,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   authBtnText: {
-    color: C.textWhite,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
   },
@@ -441,12 +445,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: C.glassBorder,
+    backgroundColor: colors.glassLight,
   },
   dividerText: {
     marginHorizontal: 14,
     fontSize: SIZES.caption,
-    color: C.textMuted,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
   },
 
@@ -461,9 +465,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: C.glass,
+    backgroundColor: colors.glassLight,
     borderWidth: 1,
-    borderColor: C.glassBorder,
+    borderColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -476,12 +480,12 @@ const styles = StyleSheet.create({
   },
   bottomText: {
     fontSize: SIZES.bodySmall,
-    color: C.textMuted,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
   },
   bottomLink: {
     fontSize: SIZES.bodySmall,
-    color: C.accentLight,
+    color: colors.accent,
     fontWeight: FONT_WEIGHTS.semiBold,
   },
 });

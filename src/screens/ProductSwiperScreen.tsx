@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {useState, useRef, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product, PRODUCTS, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -37,6 +38,8 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
     products?: Product[];
   };
   const {dispatch, state} = useApp();
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const allProducts: Product[] = passedProducts || PRODUCTS;
   const initialIndex = Math.max(
@@ -208,7 +211,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
             <TouchableOpacity
               style={styles.cardTopBtn}
               onPress={() => navigation.goBack()}>
-              <Icon name="chevron-down" size={22} color={COLORS.charcoal} />
+              <Icon name="chevron-down" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.cardTopRight}>
               <TouchableOpacity
@@ -221,8 +224,8 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
                   size={18}
                   color={
                     state.favorites.includes(item.id)
-                      ? COLORS.primary
-                      : COLORS.midGray
+                      ? colors.accentForeground
+                      : colors.textTertiary
                   }
                   family={
                     state.favorites.includes(item.id) ? 'ionicons' : 'feather'
@@ -326,7 +329,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
               <Icon
                 name="chevron-down"
                 size={16}
-                color={COLORS.primary}
+                color={colors.accentForeground}
               />
             </TouchableOpacity>
           </View>
@@ -366,7 +369,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
             <TouchableOpacity
               style={styles.expandedTopBtn}
               onPress={handleCollapse}>
-              <Icon name="chevron-down" size={22} color={COLORS.charcoal} />
+              <Icon name="chevron-down" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.expandedTopRight}>
               <TouchableOpacity
@@ -375,7 +378,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
                 <Icon
                   name="heart"
                   size={18}
-                  color={isFavorite ? COLORS.primary : COLORS.midGray}
+                  color={isFavorite ? colors.accentForeground : colors.textTertiary}
                   family={isFavorite ? 'ionicons' : 'feather'}
                 />
               </TouchableOpacity>
@@ -498,7 +501,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
                   ]}
                   onPress={() => setSelectedColor(color)}>
                   {selectedColor === color && (
-                    <Icon name="check" size={14} color={COLORS.white} />
+                    <Icon name="check" size={14} color={colors.textPrimary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -542,7 +545,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
               </View>
             ) : (
               <View style={styles.addedRow}>
-                <Icon name="shopping-bag" size={18} color={COLORS.white} />
+                <Icon name="shopping-bag" size={18} color={colors.accentText} />
                 <Text style={styles.addToCartText}> Add to Cart</Text>
               </View>
             )}
@@ -554,7 +557,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Card swiper */}
       <Animated.View
@@ -613,7 +616,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
                   <Icon
                     name="chevrons-right"
                     size={20}
-                    color={COLORS.white}
+                    color={colors.accentText}
                   />
                 )}
               </View>
@@ -631,10 +634,10 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   // Swiper
   swiperContainer: {
@@ -648,7 +651,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardOuter: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: 24,
     overflow: 'hidden',
   },
@@ -665,7 +668,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -677,7 +680,7 @@ const styles = StyleSheet.create({
   cardImageWrap: {
     width: '100%',
     height: CARD_IMAGE_HEIGHT,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
   },
   cardImage: {
     width: '100%',
@@ -717,17 +720,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassHeavy,
   },
   cardDotActive: {
-    backgroundColor: COLORS.charcoal,
+    backgroundColor: colors.accent,
     width: 16,
   },
   cardProductName: {
     fontSize: SIZES.h3,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   cardPriceRow: {
     flexDirection: 'row',
@@ -738,12 +741,12 @@ const styles = StyleSheet.create({
   cardPrice: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: FONTS.sans,
   },
   cardOrigPrice: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textDecorationLine: 'line-through',
     fontFamily: FONTS.sans,
   },
@@ -770,21 +773,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
-    backgroundColor: COLORS.cardBg,
+    borderColor: colors.glassHeavy,
+    backgroundColor: colors.glassLight,
   },
   cardSizeChipActive: {
-    borderColor: COLORS.black,
-    backgroundColor: COLORS.black,
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
   },
   cardSizeText: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.medium,
-    color: COLORS.charcoal,
+    color: colors.textTertiary,
     fontFamily: FONTS.sans,
   },
   cardSizeTextActive: {
-    color: COLORS.background,
+    color: colors.accentText,
   },
   viewDetailsBtn: {
     flexDirection: 'row',
@@ -793,11 +796,11 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: COLORS.lightGray,
+    borderTopColor: colors.glassMedium,
   },
   viewDetailsBtnText: {
     fontSize: SIZES.body,
-    color: COLORS.primary,
+    color: colors.accentForeground,
     fontFamily: FONTS.sans,
     fontWeight: FONT_WEIGHTS.medium,
   },
@@ -820,7 +823,7 @@ const styles = StyleSheet.create({
   // Counter
   counter: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: colors.glassMedium,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -828,7 +831,7 @@ const styles = StyleSheet.create({
   },
   counterText: {
     fontSize: SIZES.caption,
-    color: COLORS.white,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: FONTS.sans,
   },
@@ -839,7 +842,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   addToCartBottomBtn: {
-    backgroundColor: COLORS.black,
+    backgroundColor: colors.accent,
     borderRadius: 30,
     height: 58,
     overflow: 'hidden',
@@ -857,14 +860,14 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accentText,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addToCartBottomText: {
     flex: 1,
     textAlign: 'center',
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: FONTS.sans,
@@ -873,7 +876,7 @@ const styles = StyleSheet.create({
   // Expanded view
   expandedContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     zIndex: 100,
   },
   collapseHandle: {
@@ -885,7 +888,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassHeavy,
   },
   expandedTopBar: {
     flexDirection: 'row',
@@ -898,7 +901,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -912,7 +915,7 @@ const styles = StyleSheet.create({
   expandedImageSection: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 1.0,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
   },
   expandedImage: {
     width: SCREEN_WIDTH,
@@ -929,10 +932,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassHeavy,
   },
   expandedDotActive: {
-    backgroundColor: COLORS.charcoal,
+    backgroundColor: colors.accent,
     width: 16,
   },
   expandedInfo: {
@@ -942,7 +945,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h2,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   expandedPriceRow: {
     flexDirection: 'row',
@@ -953,11 +956,11 @@ const styles = StyleSheet.create({
   expandedPrice: {
     fontSize: SIZES.h3,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   expandedOrigPrice: {
     fontSize: SIZES.body,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textDecorationLine: 'line-through',
   },
   expandedRatingRow: {
@@ -968,35 +971,35 @@ const styles = StyleSheet.create({
   },
   expandedRating: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.semiBold,
   },
   expandedReviews: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassMedium,
     marginVertical: 16,
   },
   descTitle: {
     fontSize: SIZES.body,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   descText: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textTertiary,
     lineHeight: 22,
   },
   optionTitle: {
     fontSize: SIZES.body,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginTop: 24,
     marginBottom: 12,
   },
@@ -1010,20 +1013,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
-    backgroundColor: COLORS.cardBg,
+    borderColor: colors.glassHeavy,
+    backgroundColor: colors.glassLight,
   },
   sizeButtonActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
   },
   sizeText: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.medium,
-    color: COLORS.charcoal,
+    color: colors.textTertiary,
   },
   sizeTextActive: {
-    color: COLORS.white,
+    color: colors.accentText,
   },
   colorButton: {
     width: 36,
@@ -1035,7 +1038,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorButtonActive: {
-    borderColor: COLORS.primary,
+    borderColor: colors.accent,
     borderWidth: 3,
   },
   metaRow: {
@@ -1046,11 +1049,11 @@ const styles = StyleSheet.create({
   metaItem: {},
   metaLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
   },
   metaValue: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     marginTop: 2,
   },
@@ -1062,7 +1065,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     paddingHorizontal: 20,
     paddingVertical: 14,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
@@ -1074,16 +1077,16 @@ const styles = StyleSheet.create({
   },
   bottomPriceLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
   },
   bottomPrice: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   addToCartBtn: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: SIZES.radiusFull,
     alignItems: 'center',
@@ -1097,7 +1100,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addToCartText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
   },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   View,
   Text,
@@ -15,25 +15,12 @@ import {
 import {FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
 import {PRODUCTS, Product, formatPrice} from '../data/products';
 import ProductCard from '../components/ProductCard';
+import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 const {width} = Dimensions.get('window');
 const CARD_GAP = 12;
 const CARD_WIDTH = (width - SIZES.screenPadding * 2 - CARD_GAP) / 2;
-
-// Soft pink / rose palette
-const P = {
-  bg: '#F0F3FA',
-  surface: '#FFFFFF',
-  accent: '#1A3B8A',
-  accentLight: 'rgba(26,59,138,0.10)',
-  accentSoft: '#C8D4F0',
-  text: '#1A1A1A',
-  textSecondary: '#8E8E93',
-  border: 'rgba(26,59,138,0.15)',
-  overlayDark: 'rgba(0,0,0,0.45)',
-  overlayLight: 'rgba(0,0,0,0.25)',
-};
 
 const OCCASIONS = [
   {id: 'occ1', title: 'Workwear', image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400', color: '#F3E8FF'},
@@ -53,6 +40,9 @@ interface Props {
 }
 
 export default function ForHerScreen({navigation}: Props) {
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const allProducts = PRODUCTS.filter(
     p => p.gender === 'women' || p.gender === 'unisex',
   );
@@ -125,7 +115,7 @@ export default function ForHerScreen({navigation}: Props) {
           <Icon
             name={cat.icon}
             size={13}
-            color={activeCategory === cat.label ? '#FFF' : P.accent}
+            color={activeCategory === cat.label ? colors.accentText : colors.accentForeground}
           />
           <Text
             style={[
@@ -149,7 +139,7 @@ export default function ForHerScreen({navigation}: Props) {
         </View>
         <TouchableOpacity style={styles.seeAllBtn}>
           <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={P.accent} />
+          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -321,7 +311,7 @@ export default function ForHerScreen({navigation}: Props) {
         </View>
         <TouchableOpacity style={styles.seeAllBtn}>
           <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={P.accent} />
+          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -394,18 +384,18 @@ export default function ForHerScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={20} color={P.text} />
+          <Icon name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>For Her</Text>
         <TouchableOpacity style={styles.headerAction}>
-          <Icon name="search" size={20} color={P.text} />
+          <Icon name="search" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -428,10 +418,10 @@ export default function ForHerScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: P.bg,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -449,10 +439,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: P.surface,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: P.accent,
+    shadowColor: colors.accent,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -462,16 +452,16 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: P.text,
+    color: colors.textPrimary,
   },
   headerAction: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: P.surface,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: P.accent,
+    shadowColor: colors.accent,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -489,7 +479,7 @@ const styles = StyleSheet.create({
   heroOverlay: {
     flex: 1,
     borderRadius: 20,
-    backgroundColor: P.overlayDark,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: 24,
     justifyContent: 'space-between',
   },
@@ -497,13 +487,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   heroTag: {
-    backgroundColor: P.accent,
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
   heroTagText: {
-    color: '#FFF',
+    color: colors.accentText,
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
@@ -528,14 +518,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: P.accent,
+    backgroundColor: colors.accent,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 24,
     gap: 6,
   },
   heroCTAText: {
-    color: '#FFF',
+    color: colors.accentText,
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
@@ -553,22 +543,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: SIZES.radiusFull,
-    backgroundColor: P.surface,
+    backgroundColor: colors.glassLight,
     borderWidth: 1,
-    borderColor: P.border,
+    borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: P.accent,
-    borderColor: P.accent,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   chipText: {
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: P.accent,
+    color: colors.accentForeground,
   },
   chipTextActive: {
-    color: '#FFF',
+    color: colors.accentText,
   },
   // Sections
   section: {
@@ -585,7 +575,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: P.accent,
+    color: colors.accentForeground,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
@@ -593,7 +583,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: P.text,
+    color: colors.textPrimary,
   },
   seeAllBtn: {
     flexDirection: 'row',
@@ -604,13 +594,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: P.accent,
+    color: colors.accentForeground,
   },
   // Trending Cards
   trendCard: {
     width: 150,
     marginRight: 12,
-    backgroundColor: P.surface,
+    backgroundColor: colors.glassLight,
     borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -622,7 +612,7 @@ const styles = StyleSheet.create({
   trendImage: {
     width: '100%',
     height: 180,
-    backgroundColor: P.accentSoft,
+    backgroundColor: colors.glassLight,
   },
   trendInfo: {
     padding: 10,
@@ -631,7 +621,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: P.textSecondary,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -639,7 +629,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
     marginTop: 2,
   },
   trendPriceRow: {
@@ -652,12 +642,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
   },
   trendOrigPrice: {
     fontSize: 11,
     fontFamily: 'Poppins',
-    color: P.textSecondary,
+    color: colors.textTertiary,
     textDecorationLine: 'line-through',
   },
   // Editorial
@@ -671,7 +661,7 @@ const styles = StyleSheet.create({
   editorialOverlay: {
     flex: 1,
     borderRadius: 16,
-    backgroundColor: P.overlayDark,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     padding: 24,
     justifyContent: 'flex-end',
   },
@@ -681,12 +671,12 @@ const styles = StyleSheet.create({
     left: 16,
   },
   editorialTag: {
-    color: P.accent,
+    color: colors.accentForeground,
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
     letterSpacing: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: colors.glassMedium,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -738,7 +728,7 @@ const styles = StyleSheet.create({
   },
   mosaicBrand: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
     textTransform: 'uppercase',
@@ -768,7 +758,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 150,
     borderRadius: 14,
-    backgroundColor: P.accentSoft,
+    backgroundColor: colors.glassLight,
   },
   occasionLabelWrap: {
     marginTop: 8,
@@ -777,14 +767,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   // Best Sellers
   bestSellerCard: {
     width: 160,
     marginRight: 12,
-    backgroundColor: P.surface,
+    backgroundColor: colors.glassLight,
     borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -796,7 +786,7 @@ const styles = StyleSheet.create({
   bestSellerImage: {
     width: '100%',
     height: 200,
-    backgroundColor: P.accentSoft,
+    backgroundColor: colors.glassLight,
   },
   bestSellerRating: {
     position: 'absolute',
@@ -814,7 +804,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
   },
   bestSellerInfo: {
     padding: 10,
@@ -823,7 +813,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: P.textSecondary,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -831,20 +821,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
     marginTop: 2,
   },
   bestSellerPrice: {
     fontSize: 14,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: P.text,
+    color: colors.textPrimary,
     marginTop: 4,
   },
   // Promo Banner
   promoBanner: {
     flexDirection: 'row',
-    backgroundColor: P.accent,
+    backgroundColor: colors.accent,
     borderRadius: 18,
     overflow: 'hidden',
     minHeight: 160,
@@ -858,7 +848,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(0,0,0,0.4)',
     letterSpacing: 1.5,
     marginBottom: 4,
   },
@@ -866,18 +856,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: '#FFF',
+    color: colors.accentText,
     marginBottom: 4,
   },
   promoSub: {
     fontSize: 12,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(0,0,0,0.6)',
     marginBottom: 12,
   },
   promoCTA: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.accentText,
     paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 20,
@@ -886,7 +876,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: P.accent,
+    color: colors.accentForeground,
   },
   promoImage: {
     width: 130,
@@ -931,8 +921,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderRadius: SIZES.radiusMd,
     overflow: 'hidden',
-    backgroundColor: P.surface,
-    shadowColor: P.accent,
+    backgroundColor: colors.glassLight,
+    shadowColor: colors.accent,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.06,
     shadowRadius: 8,

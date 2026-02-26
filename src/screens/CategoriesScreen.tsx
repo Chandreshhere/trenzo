@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
 import {CATEGORIES, PRODUCTS, BRANDS, formatPrice} from '../data/products';
 import Icon from '../components/Icon';
 import ProductCard from '../components/ProductCard';
+import {useTheme} from '../context/ThemeContext';
 
 const {width} = Dimensions.get('window');
 const PAD = SIZES.screenPadding;
@@ -63,6 +64,9 @@ interface Props {
 }
 
 export default function CategoriesScreen({navigation}: Props) {
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   // Staggered entrance animations
   const headerAnim = useRef(new Animated.Value(0)).current;
   const heroAnim = useRef(new Animated.Value(0)).current;
@@ -276,7 +280,7 @@ export default function CategoriesScreen({navigation}: Props) {
           style={styles.seeAllBtn}
           onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Top Picks', products: topPicks})}>
           <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={COLORS.primary} />
+          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -317,7 +321,7 @@ export default function CategoriesScreen({navigation}: Props) {
             <Text style={styles.promoSub}>Across all categories</Text>
             <View style={styles.promoCTA}>
               <Text style={styles.promoCTAText}>Shop Sale</Text>
-              <Icon name="arrow-right" size={12} color={COLORS.primary} />
+              <Icon name="arrow-right" size={12} color={colors.accentForeground} />
             </View>
           </View>
           <Image
@@ -331,7 +335,7 @@ export default function CategoriesScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View style={[styles.header, animStyle(headerAnim, 20)]}>
@@ -340,7 +344,7 @@ export default function CategoriesScreen({navigation}: Props) {
             <Text style={styles.headerTitle}>Categories</Text>
           </View>
           <TouchableOpacity style={styles.headerSearchBtn}>
-            <Icon name="search" size={20} color={COLORS.charcoal} />
+            <Icon name="search" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -358,10 +362,10 @@ export default function CategoriesScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   // Header
   header: {
@@ -376,7 +380,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: colors.accentForeground,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
@@ -384,13 +388,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   headerSearchBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -412,13 +416,13 @@ const styles = StyleSheet.create({
   },
   heroTagWrap: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
   heroTag: {
-    color: '#FFF',
+    color: colors.background,
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
@@ -453,7 +457,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: colors.accentForeground,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
@@ -461,7 +465,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   seeAllBtn: {
     flexDirection: 'row',
@@ -472,7 +476,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: colors.accentForeground,
   },
   // Featured Collections
   collectionCard: {
@@ -538,7 +542,7 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     borderWidth: 2.5,
-    borderColor: COLORS.primary,
+    borderColor: colors.accent,
     padding: 3,
     overflow: 'hidden',
   },
@@ -551,7 +555,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginTop: 6,
     textAlign: 'center',
   },
@@ -611,13 +615,13 @@ const styles = StyleSheet.create({
     right: 0,
     width: '50%',
     height: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: colors.glassHeavy,
     borderTopRightRadius: 18,
   },
   // Brands
   brandChip: {
     width: 120,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: 16,
     padding: 14,
     alignItems: 'center',
@@ -626,20 +630,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassLight,
     marginBottom: 8,
   },
   brandName: {
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   brandTagline: {
     fontSize: 10,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textAlign: 'center',
     marginTop: 2,
   },
@@ -647,14 +651,14 @@ const styles = StyleSheet.create({
   pickCard: {
     width: 150,
     marginRight: 12,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: 14,
     overflow: 'hidden',
   },
   pickImage: {
     width: '100%',
     height: 180,
-    backgroundColor: '#F0E8E3',
+    backgroundColor: colors.glassLight,
   },
   pickRating: {
     position: 'absolute',
@@ -663,7 +667,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
@@ -672,7 +676,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
   },
   pickInfo: {
     padding: 10,
@@ -681,7 +685,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -689,20 +693,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginTop: 2,
   },
   pickPrice: {
     fontSize: 14,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginTop: 4,
   },
   // Promo
   promoBanner: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     borderRadius: 20,
     overflow: 'hidden',
     minHeight: 170,
@@ -716,7 +720,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(0,0,0,0.5)',
     letterSpacing: 1.5,
     marginBottom: 4,
   },
@@ -724,13 +728,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.serif,
-    color: '#FFF',
+    color: colors.accentText,
     lineHeight: 33,
   },
   promoSub: {
     fontSize: 12,
     fontFamily: 'Poppins',
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(0,0,0,0.5)',
     marginTop: 4,
     marginBottom: 14,
   },
@@ -738,7 +742,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background,
     paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 22,
@@ -748,7 +752,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
-    color: COLORS.primary,
+    color: colors.accentForeground,
   },
   promoImage: {
     width: 140,

@@ -2,6 +2,7 @@ import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {NavigationContainer} from '@react-navigation/native';
+import {useTheme} from '../context/ThemeContext';
 
 import HomeScreen from '../screens/HomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
@@ -37,13 +38,15 @@ function HomeTabs() {
 }
 
 export default function AppNavigator() {
+  const {colors} = useTheme();
+
   return (
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          contentStyle: {backgroundColor: '#FDF3F3'},
+          contentStyle: {backgroundColor: colors.background},
         }}>
         <Stack.Screen name="Main" component={HomeTabs} />
         <Stack.Screen
@@ -68,12 +71,12 @@ export default function AppNavigator() {
         <Stack.Screen
           name="ForHer"
           component={ForHerScreen}
-          options={{contentStyle: {backgroundColor: '#FFF5F6'}}}
+          options={{contentStyle: {backgroundColor: colors.background}}}
         />
         <Stack.Screen
           name="ForHim"
           component={ForHimScreen}
-          options={{contentStyle: {backgroundColor: '#F4F6FA'}}}
+          options={{contentStyle: {backgroundColor: colors.background}}}
         />
       </Stack.Navigator>
     </NavigationContainer>

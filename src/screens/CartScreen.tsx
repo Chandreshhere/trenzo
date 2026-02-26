@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import {formatPrice} from '../data/products';
 import Icon from '../components/Icon';
 
@@ -21,7 +22,9 @@ interface Props {
 }
 
 export default function CartScreen({navigation}: Props) {
+  const {colors, isDark} = useTheme();
   const {state, dispatch, cartTotal, cartItemCount} = useApp();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -51,9 +54,9 @@ export default function CartScreen({navigation}: Props) {
   if (state.cart.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={styles.emptyIconContainer}>
-          <Icon name="shopping-bag" size={36} color={COLORS.midGray} />
+          <Icon name="shopping-bag" size={36} color={colors.textTertiary} />
         </View>
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
         <Text style={styles.emptySubtitle}>
@@ -70,7 +73,7 @@ export default function CartScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -107,7 +110,7 @@ export default function CartScreen({navigation}: Props) {
                 onPress={() =>
                   handleUpdateQuantity(item.product.id, item.quantity - 1)
                 }>
-                <Icon name="minus" size={14} color={COLORS.charcoal} />
+                <Icon name="minus" size={14} color={colors.textPrimary} />
               </TouchableOpacity>
               <Text style={styles.quantityText}>{item.quantity}</Text>
               <TouchableOpacity
@@ -115,14 +118,14 @@ export default function CartScreen({navigation}: Props) {
                 onPress={() =>
                   handleUpdateQuantity(item.product.id, item.quantity + 1)
                 }>
-                <Icon name="plus" size={14} color={COLORS.charcoal} />
+                <Icon name="plus" size={14} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
             {/* Remove button */}
             <TouchableOpacity
               style={styles.removeButton}
               onPress={() => handleRemoveItem(item.product.id)}>
-              <Icon name="x" size={14} color={COLORS.midGray} />
+              <Icon name="x" size={14} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
         ))}
@@ -136,7 +139,7 @@ export default function CartScreen({navigation}: Props) {
           </View>
           <View style={styles.summaryRow}>
             <View style={styles.deliveryRow}>
-              <Icon name="truck" size={14} color={COLORS.darkGray} />
+              <Icon name="truck" size={14} color={colors.textSecondary} />
               <Text style={styles.summaryLabel}>  Delivery</Text>
             </View>
             <Text style={[styles.summaryValue, styles.freeText]}>FREE</Text>
@@ -173,7 +176,7 @@ export default function CartScreen({navigation}: Props) {
           activeOpacity={0.8}>
           <Text style={styles.checkoutButtonText}>Checkout</Text>
           <View style={styles.checkoutArrow}>
-            <Icon name="arrow-right" size={18} color={COLORS.white} />
+            <Icon name="arrow-right" size={18} color={colors.accentText} />
           </View>
         </TouchableOpacity>
       </View>
@@ -181,15 +184,15 @@ export default function CartScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   // Empty state
   emptyContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -207,26 +210,26 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h3,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: SIZES.body,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   shopButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: SIZES.radiusFull,
     marginTop: 32,
   },
   shopButtonText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
@@ -244,12 +247,12 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h1,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     letterSpacing: 0.3,
   },
   itemCount: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
@@ -259,7 +262,7 @@ const styles = StyleSheet.create({
   },
   cartItem: {
     flexDirection: 'row',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     padding: 12,
     marginBottom: 12,
@@ -268,7 +271,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: SIZES.radiusMd,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
   },
   itemInfo: {
     flex: 1,
@@ -277,7 +280,7 @@ const styles = StyleSheet.create({
   },
   itemBrand: {
     fontSize: SIZES.tiny,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -286,20 +289,20 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textSecondary,
     marginTop: 2,
     fontFamily: 'Poppins',
   },
   itemMeta: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 2,
     fontFamily: 'Poppins',
   },
   itemPrice: {
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginTop: 4,
     fontFamily: 'Poppins',
   },
@@ -313,14 +316,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quantityText: {
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginVertical: 4,
     fontFamily: 'Poppins',
   },
@@ -336,7 +339,7 @@ const styles = StyleSheet.create({
   },
   // Summary
   summaryContainer: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     padding: 20,
     marginTop: 8,
@@ -346,7 +349,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
     letterSpacing: 0.2,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginBottom: 16,
   },
   summaryRow: {
@@ -360,35 +363,35 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textSecondary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   summaryValue: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textSecondary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
   freeText: {
-    color: COLORS.success,
+    color: colors.success,
     fontWeight: FONT_WEIGHTS.semiBold,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassLight,
     marginVertical: 10,
   },
   totalLabel: {
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   totalValue: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.primary,
+    color: colors.accent,
     fontFamily: 'Poppins',
   },
   // Bottom bar
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 34,
@@ -411,27 +414,27 @@ const styles = StyleSheet.create({
   },
   bottomTotalLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   bottomTotalValue: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   checkoutButton: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: SIZES.radiusFull,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkoutButtonText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',

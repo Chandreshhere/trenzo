@@ -1,4 +1,4 @@
-import React, {useRef, useEffect} from 'react';
+import React, {useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import {MOCK_ORDERS, PRODUCTS, formatPrice} from '../data/products';
 import Icon from '../components/Icon';
 
@@ -20,7 +21,9 @@ interface Props {
 
 export default function ProfileScreen({navigation}: Props) {
   const {state, dispatch} = useApp();
+  const {colors, isDark, toggleTheme, statusBarStyle} = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -163,20 +166,20 @@ export default function ProfileScreen({navigation}: Props) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Delivered':
-        return COLORS.success;
+        return colors.success;
       case 'In Transit':
-        return COLORS.warning;
+        return colors.warning;
       default:
-        return COLORS.midGray;
+        return colors.textTertiary;
     }
   };
 
   if (!state.isLoggedIn) {
     return (
       <View style={styles.notLoggedIn}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={statusBarStyle} />
         <View style={styles.notLoggedInIconContainer}>
-          <Icon name="user" size={40} color={COLORS.midGray} />
+          <Icon name="user" size={40} color={colors.textTertiary} />
         </View>
         <Text style={styles.notLoggedInTitle}>Welcome to Trenzo</Text>
         <Text style={styles.notLoggedInSubtitle}>
@@ -203,7 +206,7 @@ export default function ProfileScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={statusBarStyle} />
       <Animated.ScrollView
         style={{opacity: fadeAnim}}
         showsVerticalScrollIndicator={false}>
@@ -224,7 +227,7 @@ export default function ProfileScreen({navigation}: Props) {
             <Text style={styles.userEmail}>{state.user?.email}</Text>
           </View>
           <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-            <Icon name="edit-2" size={16} color={COLORS.charcoal} />
+            <Icon name="edit-2" size={16} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -287,7 +290,7 @@ export default function ProfileScreen({navigation}: Props) {
                 <Text style={styles.orderTotal}>
                   {formatPrice(order.total)}
                 </Text>
-                <Icon name="chevron-right" size={18} color={COLORS.primary} />
+                <Icon name="chevron-right" size={18} color={colors.accentForeground} />
               </View>
             </TouchableOpacity>
           ))}
@@ -295,13 +298,26 @@ export default function ProfileScreen({navigation}: Props) {
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
+          {/* Dark Mode Toggle */}
+          <TouchableOpacity style={styles.menuItem} onPress={toggleTheme} activeOpacity={0.7}>
+            <View style={styles.settingsRowLeft}>
+              <View style={[styles.menuIconContainer, {backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
+                <Icon name={isDark ? 'moon' : 'sun'} size={18} color={colors.accentForeground} />
+              </View>
+              <Text style={styles.menuLabel}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
+            </View>
+            <View style={[styles.themeToggle, isDark && styles.themeToggleActive]}>
+              <View style={[styles.themeToggleThumb, isDark && styles.themeToggleThumbActive]} />
+            </View>
+          </TouchableOpacity>
+
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
               onPress={() => handleMenuPress(item.label)}>
               <View style={styles.menuIconContainer}>
-                <Icon name={item.icon} size={18} color={COLORS.charcoal} />
+                <Icon name={item.icon} size={18} color={colors.textPrimary} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
               <View style={styles.menuRight}>
@@ -310,7 +326,7 @@ export default function ProfileScreen({navigation}: Props) {
                     <Text style={styles.menuBadgeText}>{item.badge}</Text>
                   </View>
                 )}
-                <Icon name="chevron-right" size={18} color={COLORS.midGray} />
+                <Icon name="chevron-right" size={18} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
           ))}
@@ -318,7 +334,7 @@ export default function ProfileScreen({navigation}: Props) {
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Icon name="log-out" size={18} color={COLORS.error} />
+          <Icon name="log-out" size={18} color={colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
@@ -331,15 +347,15 @@ export default function ProfileScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   // Not logged in
   notLoggedIn: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
@@ -348,7 +364,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -357,26 +373,26 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h3,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   notLoggedInSubtitle: {
     fontSize: SIZES.body,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   signInButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     paddingHorizontal: 48,
     borderRadius: SIZES.radiusFull,
     marginTop: 32,
   },
   signInButtonText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
@@ -391,7 +407,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h1,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   // User card
   userCard: {
@@ -399,7 +415,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: SIZES.screenPadding,
     marginTop: 16,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     padding: 20,
   },
@@ -407,14 +423,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 24,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.white,
+    color: colors.accentText,
     fontFamily: 'Poppins',
   },
   userInfo: {
@@ -424,12 +440,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   userEmail: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 2,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
@@ -438,7 +454,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -448,7 +464,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: SIZES.screenPadding,
     marginTop: 16,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     padding: 20,
   },
@@ -459,12 +475,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: SIZES.h3,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.primary,
+    color: colors.accentForeground,
     fontFamily: 'Poppins',
   },
   statLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 4,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
@@ -472,7 +488,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 32,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassLight,
   },
   // Recent Orders
   section: {
@@ -489,16 +505,16 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   seeAll: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.primary,
+    color: colors.accentForeground,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
   orderCard: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusMd,
     padding: 16,
     marginBottom: 12,
@@ -511,7 +527,7 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   statusBadge: {
@@ -526,7 +542,7 @@ const styles = StyleSheet.create({
   },
   orderDate: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 4,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
@@ -536,7 +552,7 @@ const styles = StyleSheet.create({
   },
   orderItemName: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textSecondary,
     marginBottom: 2,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
@@ -548,19 +564,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: COLORS.offWhite,
+    borderTopColor: colors.divider,
   },
   orderTotal: {
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   // Menu
   menuSection: {
     marginTop: 24,
     marginHorizontal: SIZES.screenPadding,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     overflow: 'hidden',
   },
@@ -570,13 +586,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.offWhite,
+    borderBottomColor: colors.divider,
   },
   menuIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -584,7 +600,7 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textSecondary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
@@ -593,7 +609,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   menuBadge: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: colors.accent + '1F',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: SIZES.radiusFull,
@@ -601,9 +617,36 @@ const styles = StyleSheet.create({
   },
   menuBadgeText: {
     fontSize: SIZES.tiny,
-    color: COLORS.primary,
+    color: colors.accentForeground,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
+  },
+  // Settings row (for theme toggle)
+  settingsRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeToggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.glassMedium,
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  themeToggleActive: {
+    backgroundColor: colors.accent,
+  },
+  themeToggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.textPrimary,
+  },
+  themeToggleThumbActive: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.accentText,
   },
   // Logout
   logoutButton: {
@@ -613,14 +656,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: SIZES.radiusFull,
     borderWidth: 1.5,
-    borderColor: COLORS.error,
+    borderColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   logoutText: {
     fontSize: SIZES.body,
-    color: COLORS.error,
+    color: colors.error,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
   },
@@ -628,7 +671,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },

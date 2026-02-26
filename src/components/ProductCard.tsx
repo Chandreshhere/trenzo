@@ -1,4 +1,4 @@
-import React, {useRef, useEffect, useState, useCallback} from 'react';
+import React, {useRef, useEffect, useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product, PRODUCTS, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette, GenderPalette} from '../context/GenderPaletteContext';
 import {useHeroTransition} from '../context/HeroTransitionContext';
 import Icon from './Icon';
 
@@ -24,8 +26,12 @@ interface Props {
 
 export default function ProductCard({product, onPress, style, compact, allProducts}: Props) {
   const {state, dispatch} = useApp();
+  const {colors, isDark} = useTheme();
+  const {activeGender, palette: gp} = useGenderPalette();
   const {openProduct} = useHeroTransition();
   const imageRef = useRef<View>(null);
+
+  const styles = useMemo(() => createStyles(colors, isDark, gp), [colors, isDark, activeGender]);
 
   // RN Animated values for press + entrance animations
   const pressScale = useRef(new Animated.Value(1)).current;
@@ -155,19 +161,19 @@ export default function ProductCard({product, onPress, style, compact, allProduc
           ) : null}
           {/* Favorite */}
           <TouchableOpacity
-            style={styles.favoriteButton}
+            style={[styles.favoriteButton, {backgroundColor: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.95)'}]}
             onPress={handleFavorite}
             hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
             <Icon
               name={isFavorite ? 'heart' : 'heart'}
               size={14}
-              color={isFavorite ? COLORS.primary : COLORS.midGray}
+              color={isFavorite ? '#FF4757' : 'rgba(0,0,0,0.4)'}
               family={isFavorite ? 'ionicons' : 'feather'}
             />
           </TouchableOpacity>
           {/* Delivery badge */}
           <View style={styles.deliveryBadge}>
-            <Icon name="zap" size={10} color={COLORS.primary} />
+            <Icon name="zap" size={10} color={gp.light} />
             <Text style={styles.deliveryBadgeText}>30 min</Text>
           </View>
         </View>
@@ -198,21 +204,21 @@ export default function ProductCard({product, onPress, style, compact, allProduc
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => handleUpdateQuantity(quantityInCart - 1)}>
-                  <Icon name="minus" size={12} color={COLORS.white} />
+                  <Icon name="minus" size={12} color={gp.lightest} />
                 </TouchableOpacity>
                 <Text style={styles.stepperQty}>{quantityInCart}</Text>
                 <TouchableOpacity
                   style={styles.stepperBtn}
                   onPress={() => handleUpdateQuantity(quantityInCart + 1)}>
-                  <Icon name="plus" size={12} color={COLORS.white} />
+                  <Icon name="plus" size={12} color={gp.lightest} />
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity style={styles.addButton} onPress={handleQuickAdd}>
                 {justAdded ? (
-                  <Icon name="check" size={16} color={COLORS.white} />
+                  <Icon name="check" size={16} color={gp.lightest} />
                 ) : (
-                  <Icon name="plus" size={16} color={COLORS.white} />
+                  <Icon name="plus" size={16} color={gp.lightest} />
                 )}
               </TouchableOpacity>
             )}
@@ -223,15 +229,16 @@ export default function ProductCard({product, onPress, style, compact, allProduc
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleSheet.create({
   container: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: gp.lightest + '15',
     borderRadius: SIZES.radiusLg,
     overflow: 'hidden',
+    ...(isDark ? {} : {shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1}),
   },
   imageContainer: {
     aspectRatio: 0.9,
-    backgroundColor: COLORS.cream,
+    backgroundColor: gp.dark,
     overflow: 'hidden',
     borderTopLeftRadius: SIZES.radiusLg,
     borderTopRightRadius: SIZES.radiusLg,
@@ -244,14 +251,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: COLORS.primary,
+    backgroundColor: gp.mid,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   newBadgeText: {
-    color: COLORS.white,
-    fontSize: 9,
+    color: '#111111',
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     letterSpacing: 0.5,
     fontFamily: FONTS.sans,
@@ -260,14 +267,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: '#1A3B8A',
+    backgroundColor: gp.dark,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   discountBadgeText: {
     color: COLORS.white,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sans,
   },
@@ -278,7 +285,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -288,24 +294,24 @@ const styles = StyleSheet.create({
     left: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
     gap: 3,
   },
   deliveryBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.charcoal,
+    color: COLORS.white,
     fontFamily: FONTS.sans,
   },
   info: {
     padding: 10,
   },
   brand: {
-    fontSize: 9,
-    color: COLORS.midGray,
+    fontSize: 10,
+    color: gp.light,
     fontFamily: FONTS.sans,
     fontWeight: FONT_WEIGHTS.medium,
     textTransform: 'uppercase',
@@ -313,7 +319,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: gp.lightest,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
     marginTop: 2,
@@ -326,13 +332,13 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: SIZES.body,
-    color: COLORS.black,
+    color: gp.lightest,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sans,
   },
   originalPrice: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: gp.light,
     textDecorationLine: 'line-through',
     fontFamily: FONTS.sans,
   },
@@ -349,28 +355,27 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 11,
-    color: COLORS.charcoal,
+    color: gp.light,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: FONTS.sans,
   },
   reviewCount: {
     fontSize: 10,
-    color: COLORS.midGray,
+    color: gp.light,
     fontFamily: FONTS.sans,
   },
   addButton: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: gp.mid,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.small,
   },
   quantityStepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: gp.mid,
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -381,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepperQty: {
-    color: COLORS.white,
+    color: gp.lightest,
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sans,

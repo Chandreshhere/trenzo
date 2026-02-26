@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useMemo} from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import {formatPrice} from '../data/products';
 import Icon from '../components/Icon';
 
@@ -21,6 +22,8 @@ interface Props {
 
 export default function CheckoutScreen({navigation}: Props) {
   const {state, dispatch, cartTotal} = useApp();
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [address, setAddress] = useState('123 Fashion Street, Suite 4');
   const [city, setCity] = useState('New York, NY 10001');
   const [paymentMethod, setPaymentMethod] = useState('card');
@@ -56,14 +59,14 @@ export default function CheckoutScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={20} color={COLORS.black} />
+          <Icon name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
         <View style={styles.placeholder} />
@@ -77,7 +80,7 @@ export default function CheckoutScreen({navigation}: Props) {
           <Text style={styles.sectionTitle}>Delivery Address</Text>
           <View style={styles.addressCard}>
             <View style={styles.addressIcon}>
-              <Icon name="map-pin" size={20} color={COLORS.primary} />
+              <Icon name="map-pin" size={20} color={colors.accentForeground} />
             </View>
             <View style={styles.addressInfo}>
               <TextInput
@@ -85,14 +88,14 @@ export default function CheckoutScreen({navigation}: Props) {
                 value={address}
                 onChangeText={setAddress}
                 placeholder="Street address"
-                placeholderTextColor={COLORS.midGray}
+                placeholderTextColor={colors.textTertiary}
               />
               <TextInput
                 style={styles.addressInput}
                 value={city}
                 onChangeText={setCity}
                 placeholder="City, State, ZIP"
-                placeholderTextColor={COLORS.midGray}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
           </View>
@@ -108,7 +111,7 @@ export default function CheckoutScreen({navigation}: Props) {
             ]}
             onPress={() => setPaymentMethod('card')}>
             <View style={styles.paymentIconContainer}>
-              <Icon name="credit-card" size={20} color={paymentMethod === 'card' ? COLORS.primary : COLORS.charcoal} />
+              <Icon name="credit-card" size={20} color={paymentMethod === 'card' ? colors.accentForeground : colors.textTertiary} />
             </View>
             <View style={styles.paymentInfo}>
               <Text style={styles.paymentName}>Credit/Debit Card</Text>
@@ -130,7 +133,7 @@ export default function CheckoutScreen({navigation}: Props) {
             ]}
             onPress={() => setPaymentMethod('apple')}>
             <View style={styles.paymentIconContainer}>
-              <Icon name="smartphone" size={20} color={paymentMethod === 'apple' ? COLORS.primary : COLORS.charcoal} />
+              <Icon name="smartphone" size={20} color={paymentMethod === 'apple' ? colors.accentForeground : colors.textTertiary} />
             </View>
             <View style={styles.paymentInfo}>
               <Text style={styles.paymentName}>Apple Pay</Text>
@@ -152,7 +155,7 @@ export default function CheckoutScreen({navigation}: Props) {
             ]}
             onPress={() => setPaymentMethod('cod')}>
             <View style={styles.paymentIconContainer}>
-              <Icon name="dollar-sign" size={20} color={paymentMethod === 'cod' ? COLORS.primary : COLORS.charcoal} />
+              <Icon name="dollar-sign" size={20} color={paymentMethod === 'cod' ? colors.accentForeground : colors.textTertiary} />
             </View>
             <View style={styles.paymentInfo}>
               <Text style={styles.paymentName}>Cash on Delivery</Text>
@@ -194,7 +197,7 @@ export default function CheckoutScreen({navigation}: Props) {
           </View>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Delivery</Text>
-            <Text style={[styles.priceValue, {color: COLORS.success}]}>FREE</Text>
+            <Text style={[styles.priceValue, {color: colors.accentForeground}]}>FREE</Text>
           </View>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Tax (8%)</Text>
@@ -237,7 +240,7 @@ export default function CheckoutScreen({navigation}: Props) {
               },
             ]}>
             <View style={styles.successIconContainer}>
-              <Icon name="check-circle" size={48} color={COLORS.success} />
+              <Icon name="check-circle" size={48} color={colors.accentForeground} />
             </View>
             <Text style={styles.successTitle}>Order Placed!</Text>
             <Text style={styles.successSubtitle}>
@@ -259,10 +262,10 @@ export default function CheckoutScreen({navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -276,7 +279,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -284,14 +287,14 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
   },
   placeholder: {width: 40},
   content: {
     paddingHorizontal: SIZES.screenPadding,
   },
   section: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusLg,
     padding: 20,
     marginBottom: 16,
@@ -300,7 +303,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginBottom: 16,
   },
   // Address
@@ -312,7 +315,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: COLORS.primaryLight + '30',
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -322,10 +325,10 @@ const styles = StyleSheet.create({
   },
   addressInput: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
+    borderBottomColor: colors.glassLight,
     marginBottom: 4,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
@@ -337,18 +340,18 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
+    borderColor: colors.glassLight,
     marginBottom: 10,
   },
   paymentOptionActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '08',
+    borderColor: colors.accent,
+    backgroundColor: colors.glassLight,
   },
   paymentIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -359,12 +362,12 @@ const styles = StyleSheet.create({
   paymentName: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   paymentDetail: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 2,
     fontFamily: 'Poppins',
   },
@@ -373,18 +376,18 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: COLORS.lightGray,
+    borderColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioActive: {
-    borderColor: COLORS.primary,
+    borderColor: colors.accent,
   },
   radioDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
   },
   // Order items
   orderItem: {
@@ -392,18 +395,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.offWhite,
+    borderBottomColor: colors.glassLight,
   },
   orderItemName: {
     flex: 1,
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   orderItemQty: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginHorizontal: 12,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
@@ -411,7 +414,7 @@ const styles = StyleSheet.create({
   orderItemPrice: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   // Price breakdown
@@ -422,31 +425,31 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   priceValue: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
   totalDivider: {
     height: 1,
-    backgroundColor: COLORS.lightGray,
+    backgroundColor: colors.glassLight,
     marginVertical: 10,
   },
   totalText: {
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   totalAmount: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.primary,
+    color: colors.accentForeground,
     fontFamily: 'Poppins',
   },
   // Bottom bar
@@ -455,7 +458,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 34,
@@ -463,7 +466,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: SIZES.radiusXl,
   },
   placeOrderButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 18,
     borderRadius: SIZES.radiusFull,
     flexDirection: 'row',
@@ -471,17 +474,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   placeOrderText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
   },
   placeOrderAmount: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.bold,
     marginLeft: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: SIZES.radiusFull,
@@ -490,12 +493,12 @@ const styles = StyleSheet.create({
   // Success modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: COLORS.overlay,
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   successModal: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusXl,
     padding: 36,
     marginHorizontal: 32,
@@ -505,7 +508,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.success + '15',
+    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -514,12 +517,12 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h2,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   successSubtitle: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textTertiary,
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: FONT_WEIGHTS.regular,
@@ -527,20 +530,20 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginTop: 16,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
   successButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: SIZES.radiusFull,
     marginTop: 24,
   },
   successButtonText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',

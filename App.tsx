@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppProvider} from './src/context/AppContext';
 import {HeroTransitionProvider} from './src/context/HeroTransitionContext';
 import {TabBarProvider} from './src/context/TabBarContext';
+import {ThemeProvider, useTheme} from './src/context/ThemeContext';
+import {GenderPaletteProvider} from './src/context/GenderPaletteContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import ProductDetailOverlay from './src/components/ProductDetailOverlay';
 import SplashScreen from './src/screens/SplashScreen';
@@ -14,7 +16,8 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 
 type AppScreen = 'splash' | 'onboarding' | 'main';
 
-function App() {
+function AppInner() {
+  const {statusBarStyle} = useTheme();
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -47,33 +50,44 @@ function App() {
     setCurrentScreen('main');
   }, []);
 
-  // Don't render anything until we've checked onboarding status
   if (checkingOnboarding) {
     return null;
   }
 
   return (
+    <>
+      <StatusBar barStyle={statusBarStyle} />
+      {currentScreen === 'splash' && (
+        <SplashScreen onFinish={handleSplashFinish} />
+      )}
+      {currentScreen === 'onboarding' && (
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
+      )}
+      {currentScreen === 'main' && (
+        <>
+          <AppNavigator />
+          <ProductDetailOverlay />
+        </>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
     <GestureHandlerRootView style={{flex: 1}}>
       <SafeAreaProvider>
-        <AppProvider>
-          <TabBarProvider>
-          <HeroTransitionProvider>
-            <StatusBar barStyle="dark-content" />
-            {currentScreen === 'splash' && (
-              <SplashScreen onFinish={handleSplashFinish} />
-            )}
-            {currentScreen === 'onboarding' && (
-              <OnboardingScreen onComplete={handleOnboardingComplete} />
-            )}
-            {currentScreen === 'main' && (
-              <>
-                <AppNavigator />
-                <ProductDetailOverlay />
-              </>
-            )}
-          </HeroTransitionProvider>
-          </TabBarProvider>
-        </AppProvider>
+        <ThemeProvider>
+          <GenderPaletteProvider>
+            <AppProvider>
+              <TabBarProvider>
+                <HeroTransitionProvider>
+                  <AppInner />
+                </HeroTransitionProvider>
+              </TabBarProvider>
+            </AppProvider>
+          </GenderPaletteProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

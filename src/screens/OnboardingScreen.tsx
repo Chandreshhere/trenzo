@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef, useState, useMemo} from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import {COLORS, FONT_WEIGHTS, SIZES} from '../utils/theme';
+import {FONT_WEIGHTS, SIZES} from '../utils/theme';
+import {useTheme} from '../context/ThemeContext';
 
 const {width, height} = Dimensions.get('window');
 
@@ -42,6 +43,8 @@ interface Props {
 }
 
 export default function OnboardingScreen({onComplete}: Props) {
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -99,7 +102,7 @@ export default function OnboardingScreen({onComplete}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       {/* Skip button */}
       <TouchableOpacity style={styles.skipButton} onPress={onComplete}>
         <Text style={styles.skipText}>Skip</Text>
@@ -136,7 +139,7 @@ export default function OnboardingScreen({onComplete}: Props) {
             });
             const dotOpacity = scrollX.interpolate({
               inputRange: [(index - 1) * width, index * width, (index + 1) * width],
-              outputRange: [0.3, 1, 0.3],
+              outputRange: [0.4, 1, 0.4],
               extrapolate: 'clamp',
             });
             return (
@@ -165,10 +168,10 @@ export default function OnboardingScreen({onComplete}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   skipButton: {
     position: 'absolute',
@@ -180,7 +183,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
@@ -212,14 +215,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: SIZES.h1,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     textAlign: 'center',
     lineHeight: 42,
     fontFamily: 'Poppins',
   },
   subtitle: {
     fontSize: SIZES.body,
-    color: COLORS.darkGray,
+    color: colors.textTertiary,
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 24,
@@ -239,11 +242,11 @@ const styles = StyleSheet.create({
   dot: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     marginHorizontal: 4,
   },
   nextButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 18,
     paddingHorizontal: 48,
     borderRadius: SIZES.radiusFull,
@@ -251,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextButtonText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     letterSpacing: 0.5,

@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
+import ReAnimated, {FadeInUp, FadeInDown} from 'react-native-reanimated';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
+import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
 
 const {width} = Dimensions.get('window');
@@ -25,6 +27,8 @@ interface Props {
 export default function ProductDetailScreen({route, navigation}: Props) {
   const {product} = route.params as {product: Product};
   const {dispatch, state} = useApp();
+  const {colors, isDark} = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -85,13 +89,13 @@ export default function ProductDetailScreen({route, navigation}: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.topButton}
           onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={22} color={COLORS.black} />
+          <Icon name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.topButton}
@@ -99,7 +103,7 @@ export default function ProductDetailScreen({route, navigation}: Props) {
           <Icon
             name={isFavorite ? 'heart' : 'heart'}
             size={22}
-            color={isFavorite ? COLORS.primary : COLORS.midGray}
+            color={isFavorite ? '#FF4757' : colors.textSecondary}
             family={isFavorite ? 'ionicons' : 'feather'}
           />
         </TouchableOpacity>
@@ -137,11 +141,9 @@ export default function ProductDetailScreen({route, navigation}: Props) {
           </View>
         </View>
 
-        <Animated.View
-          style={[
-            styles.infoContainer,
-            {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
-          ]}>
+        <ReAnimated.View
+          entering={FadeInUp.delay(150).duration(450).springify()}
+          style={styles.infoContainer}>
           <View style={styles.brandRow}>
             <Text style={styles.brand}>{product.brand}</Text>
             <View style={styles.ratingContainer}>
@@ -171,7 +173,7 @@ export default function ProductDetailScreen({route, navigation}: Props) {
 
           {/* Delivery info */}
           <View style={styles.deliveryRow}>
-            <Icon name="zap" size={16} color={COLORS.primary} />
+            <Icon name="zap" size={16} color={colors.accentForeground} />
             <Text style={styles.deliveryText}>Express delivery in 30 min</Text>
           </View>
 
@@ -211,7 +213,7 @@ export default function ProductDetailScreen({route, navigation}: Props) {
                 ]}
                 onPress={() => setSelectedColor(color)}>
                 {selectedColor === color && (
-                  <Icon name="check" size={14} color={COLORS.white} />
+                  <Icon name="check" size={14} color={colors.textPrimary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -227,7 +229,7 @@ export default function ProductDetailScreen({route, navigation}: Props) {
               <Text style={styles.metaValue}>{product.subcategory}</Text>
             </View>
           </View>
-        </Animated.View>
+        </ReAnimated.View>
 
         <View style={{height: 120}} />
       </ScrollView>
@@ -247,12 +249,12 @@ export default function ProductDetailScreen({route, navigation}: Props) {
             activeOpacity={0.8}>
             {addedToCart ? (
               <View style={styles.addedRow}>
-                <Icon name="check" size={18} color={COLORS.white} />
+                <Icon name="check" size={18} color={colors.accentText} />
                 <Text style={styles.addToCartText}> Added to Cart</Text>
               </View>
             ) : (
               <View style={styles.addedRow}>
-                <Icon name="shopping-bag" size={18} color={COLORS.white} />
+                <Icon name="shopping-bag" size={18} color={colors.accentText} />
                 <Text style={styles.addToCartText}> Add to Cart</Text>
               </View>
             )}
@@ -263,10 +265,10 @@ export default function ProductDetailScreen({route, navigation}: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   topBar: {
     position: 'absolute',
@@ -282,13 +284,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   imageSection: {
     height: width * 1.1,
-    backgroundColor: COLORS.cream,
+    backgroundColor: colors.glassLight,
   },
   productImage: {
     width,
@@ -304,17 +306,17 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: colors.textTertiary,
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: COLORS.white,
+    backgroundColor: colors.accent,
     width: 24,
   },
   infoContainer: {
     paddingHorizontal: SIZES.screenPadding,
     paddingTop: 24,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: SIZES.radiusXl,
     borderTopRightRadius: SIZES.radiusXl,
     marginTop: -24,
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.medium,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -339,20 +341,20 @@ const styles = StyleSheet.create({
   },
   rating: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
   },
   reviews: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontFamily: 'Poppins',
   },
   productName: {
     fontSize: SIZES.h2,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     marginTop: 8,
   },
   priceRow: {
@@ -363,18 +365,18 @@ const styles = StyleSheet.create({
   price: {
     fontSize: SIZES.h3,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.primary,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   originalPrice: {
     fontSize: SIZES.body,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     marginLeft: 10,
     textDecorationLine: 'line-through',
     fontFamily: 'Poppins',
   },
   saveBadge: {
-    backgroundColor: COLORS.primaryLight + '30',
+    backgroundColor: colors.accent,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
   },
   saveText: {
     fontSize: SIZES.tiny,
-    color: COLORS.primaryDark,
+    color: colors.accentText,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: 'Poppins',
   },
@@ -391,14 +393,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 16,
-    backgroundColor: COLORS.primary + '0D',
+    backgroundColor: colors.glassLight,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: SIZES.radiusMd,
   },
   deliveryText: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     fontFamily: 'Poppins',
   },
@@ -406,13 +408,13 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginTop: 24,
     marginBottom: 8,
   },
   description: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.darkGray,
+    color: colors.textTertiary,
     lineHeight: 22,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
@@ -421,7 +423,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     marginTop: 24,
     marginBottom: 12,
   },
@@ -435,21 +437,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
-    backgroundColor: COLORS.cardBg,
+    borderColor: colors.glassLight,
+    backgroundColor: colors.glassLight,
   },
   sizeButtonActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
   },
   sizeText: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.medium,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   sizeTextActive: {
-    color: COLORS.white,
+    color: colors.accentText,
   },
   colorButton: {
     width: 36,
@@ -461,7 +463,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorButtonActive: {
-    borderColor: COLORS.primary,
+    borderColor: colors.accent,
     borderWidth: 3,
   },
   metaRow: {
@@ -472,13 +474,13 @@ const styles = StyleSheet.create({
   metaItem: {},
   metaLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   metaValue: {
     fontSize: SIZES.bodySmall,
-    color: COLORS.charcoal,
+    color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     marginTop: 2,
     fontFamily: 'Poppins',
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: colors.glassLight,
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 34,
@@ -502,18 +504,18 @@ const styles = StyleSheet.create({
   },
   bottomPriceLabel: {
     fontSize: SIZES.caption,
-    color: COLORS.midGray,
+    color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
     fontFamily: 'Poppins',
   },
   bottomPrice: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
-    color: COLORS.black,
+    color: colors.textPrimary,
     fontFamily: 'Poppins',
   },
   addToCartButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: SIZES.radiusFull,
     alignItems: 'center',
@@ -527,7 +529,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addToCartText: {
-    color: COLORS.white,
+    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: 'Poppins',
