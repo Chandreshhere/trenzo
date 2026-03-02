@@ -12,13 +12,15 @@ import {
   StatusBar,
   Alert,
   ImageBackground,
+  RefreshControl,
+  PanResponder,
 } from 'react-native';
 import ReAnimated, {
   useSharedValue,
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import {scheduleOnRN} from 'react-native-worklets';
-import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
+import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
 import {PRODUCTS, BANNERS, CATEGORIES, BRANDS, Product, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
 import {useHeroTransition} from '../context/HeroTransitionContext';
@@ -29,9 +31,7 @@ import ProductCard from '../components/ProductCard';
 import Icon from '../components/Icon';
 import SearchOverlay from '../components/SearchOverlay';
 import AnimatedSection from '../components/AnimatedSection';
-import CurtainRefresh from '../components/CurtainRefresh';
 import LinearGradient from 'react-native-linear-gradient';
-import {BlurView} from '@react-native-community/blur';
 
 const HERO_BANNER_M = require('../../assets/images /1.jpg');
 const HERO_BANNER_F = require('../../assets/images /2.jpg');
@@ -52,8 +52,8 @@ const CAROUSEL_IMAGES_WOMEN = [
 ];
 
 const {width} = Dimensions.get('window');
-const BANNER_CARD_WIDTH = width - 64;
-const BANNER_SPACING = 12;
+const BANNER_CARD_WIDTH = width - (SIZES.screenPadding * 2);
+const BANNER_SPACING = 10;
 const BANNER_SNAP = BANNER_CARD_WIDTH + BANNER_SPACING;
 const MEN_BANNER_TEXT = [
   {quote: 'Suit Up,\nStand Out', subtitle: 'Premium menswear essentials', issueTag: 'THE MEN\'S EDIT'},
@@ -75,33 +75,93 @@ const LOOP_BANNERS = [
   {...BANNERS[0], id: 'clone-first'},
 ];
 
-// Layout constants for new sections
-const BRAND_CARD_W = (width - 40 - 36) / 4;
-
 
 // Static data for Style Occasions
+const OCCASION_MEN_IMGS = [
+  require('../../assets/images /Untitled design 3/men/1.png'),
+  require('../../assets/images /Untitled design 3/men/2.png'),
+  require('../../assets/images /Untitled design 3/men/3.png'),
+  require('../../assets/images /Untitled design 3/men/4.png'),
+  require('../../assets/images /Untitled design 3/men/5.png'),
+  require('../../assets/images /Untitled design 3/men/6.png'),
+  require('../../assets/images /Untitled design 3/men/7.png'),
+  require('../../assets/images /Untitled design 3/men/8.png'),
+  require('../../assets/images /Untitled design 3/men/9.png'),
+  require('../../assets/images /Untitled design 3/men/10.png'),
+  require('../../assets/images /Untitled design 3/men/11.png'),
+  require('../../assets/images /Untitled design 3/men/12.png'),
+];
+const OCCASION_WOMEN_IMGS = [
+  require('../../assets/images /Untitled design 3/1.png'),
+  require('../../assets/images /Untitled design 3/2.png'),
+  require('../../assets/images /Untitled design 3/3.png'),
+  require('../../assets/images /Untitled design 3/4.png'),
+  require('../../assets/images /Untitled design 3/5.png'),
+  require('../../assets/images /Untitled design 3/6.png'),
+  require('../../assets/images /Untitled design 3/7.png'),
+  require('../../assets/images /Untitled design 3/8.png'),
+  require('../../assets/images /Untitled design 3/9.png'),
+  require('../../assets/images /Untitled design 3/10.png'),
+  require('../../assets/images /Untitled design 3/11.png'),
+  require('../../assets/images /Untitled design 3/12.png'),
+];
 const OCCASIONS = [
-  {id: 'oc1', label: 'STREET WEAR', image: 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=400'},
-  {id: 'oc2', label: 'NIGHT OUT', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400'},
-  {id: 'oc3', label: 'WEDDING', image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400'},
-  {id: 'oc4', label: 'OFFICE', image: 'https://images.unsplash.com/photo-1507679799987-c73b1d15d073?w=400'},
-  {id: 'oc5', label: 'BRUNCH', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=400'},
-  {id: 'oc6', label: 'VACATION', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400'},
-  {id: 'oc7', label: 'GYM', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400'},
-  {id: 'oc8', label: 'DATE NIGHT', image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400'},
-  {id: 'oc9', label: 'FESTIVAL', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400'},
-  {id: 'oc10', label: 'CASUAL', image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=400'},
-  {id: 'oc11', label: 'FORMAL', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400'},
-  {id: 'oc12', label: 'COCKTAIL', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400'},
+  {id: 'oc1', label: 'STREET WEAR'},
+  {id: 'oc2', label: 'NIGHT OUT'},
+  {id: 'oc3', label: 'WEDDING'},
+  {id: 'oc4', label: 'OFFICE'},
+  {id: 'oc5', label: 'BRUNCH'},
+  {id: 'oc6', label: 'VACATION'},
+  {id: 'oc7', label: 'GYM'},
+  {id: 'oc8', label: 'DATE NIGHT'},
+  {id: 'oc9', label: 'FESTIVAL'},
+  {id: 'oc10', label: 'CASUAL'},
+  {id: 'oc11', label: 'FORMAL'},
+  {id: 'oc12', label: 'COCKTAIL'},
 ];
 
 // Static data for Offers
-const OFFERS_DATA = [
+const OFFERS_MEN = [
+  {id: 'of1', title: 'FLAT 50%\nOFF', subtitle: 'On streetwear', image: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=600'},
+  {id: 'of2', title: 'BUY 2\nGET 1', subtitle: 'Selected brands', image: 'https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?w=600'},
+  {id: 'of3', title: 'UPTO 70%\nOFF', subtitle: 'End of season', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=600'},
+  {id: 'of4', title: 'EXTRA 20%\nOFF', subtitle: 'Using Trenzo Pay', image: 'https://images.unsplash.com/photo-1507680434567-5739c80be1ac?w=600'},
+];
+const OFFERS_WOMEN = [
   {id: 'of1', title: 'FLAT 50%\nOFF', subtitle: 'On ethnic wear', image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600'},
   {id: 'of2', title: 'BUY 2\nGET 1', subtitle: 'Selected brands', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600'},
-  {id: 'of3', title: 'UPTO 70%\nOFF', subtitle: 'End of season', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600'},
+  {id: 'of3', title: 'UPTO 70%\nOFF', subtitle: 'End of season', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600'},
   {id: 'of4', title: 'EXTRA 20%\nOFF', subtitle: 'Using Trenzo Pay', image: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=600'},
 ];
+
+// Pre-compute grain dots once (subtle film grain texture)
+const GRAIN_DOTS = Array.from({length: 300}, (_, i) => ({
+  key: `g${i}`,
+  left: Math.random() * 100,
+  top: Math.random() * 100,
+  size: 1 + Math.random() * 1.5,
+  opacity: 0.03 + Math.random() * 0.07,
+}));
+
+const GrainOverlay = React.memo(() => (
+  <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    {GRAIN_DOTS.map(d => (
+      <View
+        key={d.key}
+        style={{
+          position: 'absolute',
+          left: `${d.left}%`,
+          top: `${d.top}%`,
+          width: d.size,
+          height: d.size,
+          borderRadius: d.size / 2,
+          backgroundColor: '#FFFFFF',
+          opacity: d.opacity,
+        }}
+      />
+    ))}
+  </View>
+));
 
 interface Props {
   navigation: any;
@@ -127,8 +187,38 @@ export default function HomeScreen({navigation}: Props) {
   const placeholderSlide = useRef(new Animated.Value(0)).current;
   const searchPlaceholders = ['brands', 'products', 'categories', 'deals', 'trending'];
   const [refreshing, setRefreshing] = useState(false);
+  const [brandPage, setBrandPage] = useState(0);
+  const brandSlideAnim = useRef(new Animated.Value(0)).current;
+  const brandPageRef = useRef(0);
+  brandPageRef.current = brandPage;
+  const brandPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 15 && Math.abs(gesture.dy) < 30,
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx < -40) {
+          const totalPages = Math.ceil(BRANDS.length / 12);
+          if (brandPageRef.current < totalPages - 1) {
+            const next = brandPageRef.current + 1;
+            Animated.timing(brandSlideAnim, {toValue: -1, duration: 220, useNativeDriver: true}).start(() => {
+              setBrandPage(next);
+              brandSlideAnim.setValue(0.5);
+              Animated.spring(brandSlideAnim, {toValue: 0, friction: 14, tension: 50, useNativeDriver: true}).start();
+            });
+          }
+        } else if (gesture.dx > 40) {
+          if (brandPageRef.current > 0) {
+            const prev = brandPageRef.current - 1;
+            Animated.timing(brandSlideAnim, {toValue: 1, duration: 220, useNativeDriver: true}).start(() => {
+              setBrandPage(prev);
+              brandSlideAnim.setValue(-0.5);
+              Animated.spring(brandSlideAnim, {toValue: 0, friction: 14, tension: 50, useNativeDriver: true}).start();
+            });
+          }
+        }
+      },
+    })
+  ).current;
   const [activeBanner, setActiveBanner] = useState(0);
-  const [brandsPage, setBrandsPage] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const bannerScrollX = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -137,6 +227,8 @@ export default function HomeScreen({navigation}: Props) {
   const lastScrollYRef = useRef(0);
   const isTabBarHidden = useRef(false);
   const scrollY = useSharedValue(0);
+  const [exploreSearchQuery, setExploreSearchQuery] = useState('');
+  const [exploreFilter, setExploreFilter] = useState('All');
 
   const handleTabBarScroll = useCallback((y: number) => {
     const isDown = y > lastScrollYRef.current;
@@ -317,13 +409,13 @@ export default function HomeScreen({navigation}: Props) {
       loopIndex * BANNER_SNAP,
       (loopIndex + 1) * BANNER_SNAP,
     ];
-    const scale = bannerScrollX.interpolate({inputRange, outputRange: [0.92, 1, 0.92], extrapolate: 'clamp'});
-    const cardOpacity = bannerScrollX.interpolate({inputRange, outputRange: [0.7, 1, 0.7], extrapolate: 'clamp'});
-    const rotate = bannerScrollX.interpolate({inputRange, outputRange: ['3deg', '0deg', '-3deg'], extrapolate: 'clamp'});
-    const translateY = bannerScrollX.interpolate({inputRange, outputRange: [10, 0, 10], extrapolate: 'clamp'});
+    const scale = bannerScrollX.interpolate({inputRange, outputRange: [0.85, 1, 0.85], extrapolate: 'clamp'});
+    const cardOpacity = bannerScrollX.interpolate({inputRange, outputRange: [0.6, 1, 0.6], extrapolate: 'clamp'});
+    const rotateY = bannerScrollX.interpolate({inputRange, outputRange: ['-15deg', '0deg', '15deg'], extrapolate: 'clamp'});
+    const translateY = bannerScrollX.interpolate({inputRange, outputRange: [12, 0, 12], extrapolate: 'clamp'});
 
     return (
-      <Animated.View key={`${banner.id}-${loopIndex}`} style={{width: BANNER_CARD_WIDTH, marginRight: BANNER_SPACING, transform: [{scale}, {rotateZ: rotate}, {translateY}], opacity: cardOpacity}}>
+      <Animated.View key={`${banner.id}-${loopIndex}`} style={{width: BANNER_CARD_WIDTH, marginRight: BANNER_SPACING, transform: [{perspective: 1000}, {scale}, {rotateY}, {translateY}], opacity: cardOpacity}}>
         <TouchableOpacity
           activeOpacity={0.9}
           style={[styles.bannerCard, {backgroundColor: banner.color}]}
@@ -352,7 +444,7 @@ export default function HomeScreen({navigation}: Props) {
               <Text style={styles.magSubtitle}>{(activeGender === 'Women' ? WOMEN_BANNER_TEXT : MEN_BANNER_TEXT)[((loopIndex - 1 + BANNERS.length) % BANNERS.length) % (activeGender === 'Women' ? WOMEN_BANNER_TEXT : MEN_BANNER_TEXT).length].subtitle}</Text>
               <View style={styles.magShopBtn}>
                 <Text style={styles.magShopBtnText}>SHOP NOW</Text>
-                <Icon name="arrow-right" size={12} color={COLORS.white} />
+                <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : COLORS.white} />
               </View>
             </View>
           </LinearGradient>
@@ -374,36 +466,25 @@ export default function HomeScreen({navigation}: Props) {
         <TouchableOpacity
           style={[
             styles.genderCard,
-            activeGender === 'Men' && {borderColor: GENDER_PALETTES.Men.mid, borderWidth: 2.5},
+            activeGender === 'Men' && {borderColor: '#CDF564', borderWidth: 2.5},
           ]}
           activeOpacity={0.85}
           onPress={() => handleGenderCard('Men')}>
-          <View style={[
-            styles.genderCardInner,
-            activeGender === 'Men' && {borderWidth: 0},
-          ]}>
-            <Image source={GENDER_WOMEN_IMG} style={styles.genderCardImg} resizeMode="cover" />
+          <View style={[styles.genderCardInner, {borderWidth: 0}]}>
+            <Image source={GENDER_WOMEN_IMG} style={styles.genderCardImg} resizeMode="contain" />
             <LinearGradient
-              colors={activeGender === 'Men'
-                ? ['transparent', GENDER_PALETTES.Men.dark + 'E6']
-                : ['transparent', 'rgba(0,0,0,0.55)']}
+              colors={['transparent', GENDER_PALETTES.Men.dark + 'E6']}
               style={styles.genderCardGradient}
             />
             <View style={styles.genderCardContent}>
               <Text style={styles.genderCardLabel}>MEN</Text>
-              <View style={[
-                styles.genderCardArrow,
-                activeGender === 'Men' && {backgroundColor: GENDER_PALETTES.Men.mid},
-              ]}>
-                <Icon name="arrow-right" size={14} color="#fff" />
+              <View style={[styles.genderCardArrow, {backgroundColor: '#CDF564'}]}>
+                <Icon name="arrow-right" size={14} color="#000" />
               </View>
             </View>
           </View>
           {activeGender === 'Men' && (
-            <View style={[styles.genderCardAccent, {backgroundColor: GENDER_PALETTES.Men.mid}]} />
-          )}
-          {activeGender !== 'Men' && (
-            <View style={styles.genderCardInactiveOverlay} />
+            <View style={[styles.genderCardAccent, {backgroundColor: '#CDF564'}]} />
           )}
         </TouchableOpacity>
 
@@ -414,32 +495,21 @@ export default function HomeScreen({navigation}: Props) {
           ]}
           activeOpacity={0.85}
           onPress={() => handleGenderCard('Women')}>
-          <View style={[
-            styles.genderCardInner,
-            activeGender === 'Women' && {borderWidth: 0},
-          ]}>
-            <Image source={GENDER_MEN_IMG} style={styles.genderCardImg} resizeMode="cover" />
+          <View style={[styles.genderCardInner, {borderWidth: 0}]}>
+            <Image source={GENDER_MEN_IMG} style={styles.genderCardImg} resizeMode="contain" />
             <LinearGradient
-              colors={activeGender === 'Women'
-                ? ['transparent', GENDER_PALETTES.Women.dark + 'E6']
-                : ['transparent', 'rgba(0,0,0,0.55)']}
+              colors={['transparent', GENDER_PALETTES.Women.dark + 'E6']}
               style={styles.genderCardGradient}
             />
             <View style={styles.genderCardContent}>
               <Text style={styles.genderCardLabel}>WOMEN</Text>
-              <View style={[
-                styles.genderCardArrow,
-                activeGender === 'Women' && {backgroundColor: GENDER_PALETTES.Women.mid},
-              ]}>
+              <View style={[styles.genderCardArrow, {backgroundColor: GENDER_PALETTES.Women.mid}]}>
                 <Icon name="arrow-right" size={14} color="#fff" />
               </View>
             </View>
           </View>
           {activeGender === 'Women' && (
             <View style={[styles.genderCardAccent, styles.genderCardAccentRight, {backgroundColor: GENDER_PALETTES.Women.mid}]} />
-          )}
-          {activeGender !== 'Women' && (
-            <View style={styles.genderCardInactiveOverlay} />
           )}
         </TouchableOpacity>
       </View>
@@ -486,7 +556,7 @@ export default function HomeScreen({navigation}: Props) {
                 {/* Top portion with image */}
                 <View style={styles.ticketTop}>
                   <View style={styles.ticketImageShadow}>
-                    <Image source={cat.image} style={[styles.ticketImage, (cat as any).rotate && {transform: [{rotate: (cat as any).rotate}]}, (cat as any).size && {width: (cat as any).size, height: (cat as any).size}]} resizeMode="contain" />
+                    {cat.image && <Image source={cat.image} style={[styles.ticketImage, (cat as any).rotate && {transform: [{rotate: (cat as any).rotate}]}, (cat as any).size && {width: (cat as any).size, height: (cat as any).size}]} resizeMode="contain" />}
                   </View>
                 </View>
                 {/* Perforated line */}
@@ -538,86 +608,106 @@ export default function HomeScreen({navigation}: Props) {
           <Text style={styles.promoBannerTitle}>{bannerTitle}</Text>
           <Text style={styles.promoBannerSub}>{bannerSub}</Text>
           <TouchableOpacity
-            style={[styles.promoBannerBtn, {backgroundColor: genderPalette.mid}]}
+            style={[styles.promoBannerBtn, {backgroundColor: activeGender === 'Men' ? '#CDF564' : genderPalette.mid}]}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('CategoryProducts', {
               categoryName: isWomen ? 'New Arrivals' : 'Street Style',
               products: PRODUCTS.filter(p => p.isNew || p.discount),
             })}>
             <Text style={styles.promoBannerBtnText}>SHOP NOW</Text>
-            <Icon name="arrow-right" size={12} color="#fff" />
+            <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : '#fff'} />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  // 3. Discover Brands Grid
+  // 3. Discover Brands paginated grid (12 per page)
   const BRANDS_PER_PAGE = 12;
   const totalBrandPages = Math.ceil(BRANDS.length / BRANDS_PER_PAGE);
-  const pageBrands = BRANDS.slice(brandsPage * BRANDS_PER_PAGE, (brandsPage + 1) * BRANDS_PER_PAGE);
 
-  const renderDiscoverBrands = () => (
-    <View style={styles.brandsSection}>
-      <Text style={styles.brandsSectionTitle}>Discover Brands</Text>
-      <View style={styles.brandsGridWrap}>
-        <View style={styles.brandsGrid}>
-          {pageBrands.map(brand => (
-            <TouchableOpacity
-              key={brand.id}
-              style={styles.brandGridCard}
-              activeOpacity={0.8}
-              onPress={() => handleBrandPress(brand.name)}>
-              <Image source={{uri: brand.logo}} style={styles.brandGridLogo} resizeMode="contain" />
-            </TouchableOpacity>
+  const handleBrandPageChange = useCallback((direction: 'left' | 'right') => {
+    const next = direction === 'right'
+      ? Math.min(brandPage + 1, totalBrandPages - 1)
+      : Math.max(brandPage - 1, 0);
+    if (next === brandPage) return;
+    Animated.timing(brandSlideAnim, {
+      toValue: direction === 'right' ? -1 : 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setBrandPage(next);
+      brandSlideAnim.setValue(direction === 'right' ? 0.5 : -0.5);
+      Animated.spring(brandSlideAnim, {
+        toValue: 0,
+        friction: 14,
+        tension: 50,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [brandPage, totalBrandPages, brandSlideAnim]);
+
+  const renderDiscoverBrands = () => {
+    const pageBrands = BRANDS.slice(brandPage * BRANDS_PER_PAGE, (brandPage + 1) * BRANDS_PER_PAGE);
+    const translateX = brandSlideAnim.interpolate({
+      inputRange: [-1, -0.5, 0, 0.5, 1],
+      outputRange: [-width * 0.25, -width * 0.08, 0, width * 0.08, width * 0.25],
+    });
+    const scale = brandSlideAnim.interpolate({
+      inputRange: [-1, 0, 1],
+      outputRange: [0.96, 1, 0.96],
+    });
+    const opacity = brandSlideAnim.interpolate({
+      inputRange: [-1, -0.3, 0, 0.3, 1],
+      outputRange: [0, 0.6, 1, 0.6, 0],
+    });
+    return (
+      <View style={styles.brandsSection}>
+        <Text style={styles.brandsSectionTitle}>Discover Brands</Text>
+        <View style={styles.brandsGridWrap} {...brandPanResponder.panHandlers}>
+          <Animated.View style={[styles.brandsGrid, {transform: [{translateX}, {scale}], opacity}]}>
+            {pageBrands.map(brand => (
+              <TouchableOpacity
+                key={brand.id}
+                style={styles.brandGridCard}
+                activeOpacity={0.8}
+                onPress={() => handleBrandPress(brand.name)}>
+                <Image source={{uri: brand.logo}} style={styles.brandGridLogo} resizeMode="contain" />
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+          {/* Left arrow */}
+          <TouchableOpacity
+            style={[styles.brandsNavBtn, styles.brandsNavBtnLeft]}
+            activeOpacity={0.7}
+            onPress={() => handleBrandPageChange('left')}>
+            <Icon name="chevron-left" size={16} color={activeGender === 'Men' ? '#000' : '#FFFFFF'} />
+          </TouchableOpacity>
+          {/* Right arrow */}
+          <TouchableOpacity
+            style={[styles.brandsNavBtn, styles.brandsNavBtnRight]}
+            activeOpacity={0.7}
+            onPress={() => handleBrandPageChange('right')}>
+            <Icon name="chevron-right" size={16} color={activeGender === 'Men' ? '#000' : '#FFFFFF'} />
+          </TouchableOpacity>
+        </View>
+        {/* Page dots */}
+        <View style={styles.brandsDots}>
+          {Array.from({length: totalBrandPages}).map((_, i) => (
+            <View key={i} style={[styles.brandsDot, brandPage === i && styles.brandsDotActive]} />
           ))}
         </View>
-        {/* Left shadow + arrow */}
-        {/* Left shadow + arrow */}
-        <LinearGradient
-          colors={[genderPalette.dark, genderPalette.dark + 'CC', genderPalette.dark + '60', 'transparent']}
-          locations={[0, 0.3, 0.65, 1]}
-          start={{x: 0, y: 0}} end={{x: 1, y: 0}}
-          style={styles.brandsShadowLeft}
-          pointerEvents="none"
-        />
+        {/* See all Brands CTA */}
         <TouchableOpacity
-          style={[styles.brandsArrowLeft, brandsPage === 0 && {opacity: 0.3}]}
-          disabled={brandsPage === 0}
-          onPress={() => setBrandsPage(p => Math.max(0, p - 1))}>
-          <Icon name="chevron-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        {/* Right shadow + arrow */}
-        <LinearGradient
-          colors={['transparent', genderPalette.dark + '60', genderPalette.dark + 'CC', genderPalette.dark]}
-          locations={[0, 0.35, 0.7, 1]}
-          start={{x: 0, y: 0}} end={{x: 1, y: 0}}
-          style={styles.brandsShadowRight}
-          pointerEvents="none"
-        />
-        <TouchableOpacity
-          style={[styles.brandsArrowRight, brandsPage === totalBrandPages - 1 && {opacity: 0.3}]}
-          disabled={brandsPage === totalBrandPages - 1}
-          onPress={() => setBrandsPage(p => Math.min(totalBrandPages - 1, p + 1))}>
-          <Icon name="chevron-right" size={24} color="#fff" />
+          style={styles.ctaBar}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('CategoriesTab')}>
+          <Text style={styles.ctaBarText}>See all Brands</Text>
+          <Icon name="chevron-right" size={16} color={genderPalette.lightest} />
         </TouchableOpacity>
       </View>
-      {/* Pagination dots */}
-      <View style={styles.brandsDots}>
-        {Array.from({length: totalBrandPages}).map((_, i) => (
-          <View key={i} style={[styles.brandsDot, brandsPage === i && styles.brandsDotActive]} />
-        ))}
-      </View>
-      {/* See all Brands CTA */}
-      <TouchableOpacity
-        style={styles.ctaBar}
-        activeOpacity={0.7}
-        onPress={() => navigation.navigate('CategoriesTab')}>
-        <Text style={styles.ctaBarText}>See all Brands</Text>
-        <Icon name="chevron-right" size={16} color={genderPalette.lightest} />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   // 3.5 Shoe Banner
   const renderShoeBanner = () => {
@@ -645,14 +735,14 @@ export default function HomeScreen({navigation}: Props) {
           <Text style={styles.promoBannerTitle}>{bannerTitle}</Text>
           <Text style={styles.promoBannerSub}>{bannerSub}</Text>
           <TouchableOpacity
-            style={[styles.promoBannerBtn, {backgroundColor: genderPalette.mid}]}
+            style={[styles.promoBannerBtn, {backgroundColor: activeGender === 'Men' ? '#CDF564' : genderPalette.mid}]}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('CategoryProducts', {
               categoryName: isWomen ? 'Heels' : 'Sneakers',
               products: PRODUCTS.filter(p => p.category === 'Footwear' || p.isNew),
             })}>
             <Text style={styles.promoBannerBtnText}>{bannerCta}</Text>
-            <Icon name="arrow-right" size={12} color="#fff" />
+            <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : '#fff'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -718,13 +808,17 @@ export default function HomeScreen({navigation}: Props) {
     <View style={styles.occasionsSection}>
       <Text style={styles.occasionsTitle}>What's your next iconic look?</Text>
       <View style={styles.occasionsGrid}>
-        {OCCASIONS.map(occ => (
+        {OCCASIONS.map((occ, index) => (
           <TouchableOpacity
             key={occ.id}
             style={styles.occasionCard}
             activeOpacity={0.85}
             onPress={() => handleSeeAll(occ.label, genderProducts.slice(0, 8))}>
-            <Image source={{uri: occ.image}} style={styles.occasionImage} resizeMode="cover" />
+            <Image
+              source={activeGender === 'Women' ? OCCASION_WOMEN_IMGS[index] : OCCASION_MEN_IMGS[index]}
+              style={styles.occasionImage}
+              resizeMode="cover"
+            />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.65)']}
               style={styles.occasionGradient}
@@ -743,7 +837,7 @@ export default function HomeScreen({navigation}: Props) {
     <View style={styles.offersSection}>
       <Text style={styles.offersTitle}>Offers</Text>
       <View style={styles.offersGrid}>
-        {OFFERS_DATA.map(offer => (
+        {(activeGender === 'Women' ? OFFERS_WOMEN : OFFERS_MEN).map((offer) => (
           <TouchableOpacity key={offer.id} style={styles.offerCard} activeOpacity={0.9}>
             <Image source={{uri: offer.image}} style={styles.offerImage} resizeMode="cover" />
             <LinearGradient
@@ -759,6 +853,426 @@ export default function HomeScreen({navigation}: Props) {
       </View>
     </View>
   );
+
+  // 8.5 Accessories Banner
+  const renderAccessoriesBanner = () => {
+    const isWomen = activeGender === 'Women';
+    const bannerUri = isWomen
+      ? 'https://images.unsplash.com/photo-1611085583191-a3b181a88401?w=900'
+      : 'https://images.unsplash.com/photo-1622434641406-a158123450f9?w=900';
+    const bannerTitle = isWomen ? 'Accessorize\nYour Vibe' : 'Gear Up\nin Style';
+    const bannerSub = isWomen ? 'Jewellery, bags & more' : 'Watches, caps & essentials';
+    const bannerCta = isWomen ? 'SHOP ACCESSORIES' : 'SHOP ACCESSORIES';
+    return (
+      <View style={styles.shoeBannerWrap}>
+        <Image source={{uri: bannerUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.55)']}
+          style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}
+        />
+        <LinearGradient
+          colors={[genderPalette.dark, genderPalette.dark + 'CC', genderPalette.dark + '50', 'transparent']}
+          locations={[0, 0.3, 0.65, 1]}
+          style={styles.shoeBannerTopFade}
+        />
+        <View style={{position: 'absolute', bottom: 24, left: 20}}>
+          <Text style={styles.promoBannerTitle}>{bannerTitle}</Text>
+          <Text style={styles.promoBannerSub}>{bannerSub}</Text>
+          <TouchableOpacity
+            style={[styles.promoBannerBtn, {backgroundColor: activeGender === 'Men' ? '#CDF564' : genderPalette.mid}]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('CategoryProducts', {
+              categoryName: 'Accessories',
+              products: PRODUCTS.filter(p => p.category === 'Accessories' || p.category === 'Bags'),
+            })}>
+            <Text style={styles.promoBannerBtnText}>{bannerCta}</Text>
+            <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : '#fff'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // 8.6 Accessories Products Horizontal Scroll
+  const accessoryProducts = useMemo(() => {
+    const isWomen = activeGender === 'Women';
+    return PRODUCTS.filter(p =>
+      (p.category === 'Accessories' || p.category === 'Bags') &&
+      (isWomen
+        ? (p.gender === 'women' || p.gender === 'unisex')
+        : (p.gender === 'men' || p.gender === 'unisex'))
+    );
+  }, [activeGender]);
+
+  const renderAccessoryCards = () => (
+    <View style={styles.shoeCardsSection}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.shoeCardsList}
+        decelerationRate="fast"
+        snapToInterval={160}
+      >
+        {accessoryProducts.map(product => (
+          <TouchableOpacity
+            key={`acc-${product.id}`}
+            style={styles.shoeCard}
+            activeOpacity={0.9}
+            onPress={() => {}}
+          >
+            <View style={styles.shoeCardImgWrap}>
+              <Image source={{uri: product.images[0]}} style={styles.shoeCardImg} resizeMode="cover" />
+              {product.discount && (
+                <View style={[styles.shoeCardBadge, {backgroundColor: genderPalette.mid}]}>
+                  <Text style={styles.shoeCardBadgeText}>{product.discount}% OFF</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.shoeCardHeart} activeOpacity={0.7}>
+                <Icon name="heart-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.shoeCardInfo}>
+              <Text style={styles.shoeCardBrand}>{product.brand}</Text>
+              <Text style={styles.shoeCardName} numberOfLines={1}>{product.name}</Text>
+              <View style={styles.shoeCardPriceRow}>
+                <Text style={styles.shoeCardPrice}>{formatPrice(product.price)}</Text>
+                {product.originalPrice && (
+                  <Text style={styles.shoeCardOldPrice}>{formatPrice(product.originalPrice)}</Text>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  // ========== Shared product card renderer (same size as shoe cards) ==========
+  const renderProductCards = (products: {id: string; name: string; brand: string; price: number; originalPrice?: number; discount?: number; image: string}[], keyPrefix: string) => (
+    <View style={styles.shoeCardsSection}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.shoeCardsList}
+        decelerationRate="fast"
+        snapToInterval={160}
+      >
+        {products.map(p => (
+          <TouchableOpacity
+            key={`${keyPrefix}-${p.id}`}
+            style={styles.shoeCard}
+            activeOpacity={0.9}
+            onPress={() => {}}
+          >
+            <View style={styles.shoeCardImgWrap}>
+              <Image source={{uri: p.image}} style={styles.shoeCardImg} resizeMode="cover" />
+              {p.discount && (
+                <View style={[styles.shoeCardBadge, {backgroundColor: genderPalette.mid}]}>
+                  <Text style={styles.shoeCardBadgeText}>{p.discount}% OFF</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.shoeCardHeart} activeOpacity={0.7}>
+                <Icon name="heart-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.shoeCardInfo}>
+              <Text style={styles.shoeCardBrand}>{p.brand}</Text>
+              <Text style={styles.shoeCardName} numberOfLines={1}>{p.name}</Text>
+              <View style={styles.shoeCardPriceRow}>
+                <Text style={styles.shoeCardPrice}>{formatPrice(p.price)}</Text>
+                {p.originalPrice && (
+                  <Text style={styles.shoeCardOldPrice}>{formatPrice(p.originalPrice)}</Text>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  // ========== TOPS — Split banner + wide overlay cards ==========
+  const TOPS_PRODUCTS = activeGender === 'Women' ? [
+    {id: 'tw1', name: 'Silk Camisole', brand: 'Massimo Dutti', price: 2499, originalPrice: 3999, discount: 37, image: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=400'},
+    {id: 'tw2', name: 'Cropped Knit', brand: 'Zara', price: 1799, image: 'https://images.unsplash.com/photo-1564246544814-647aff343a3f?w=400'},
+    {id: 'tw3', name: 'Ruffle Blouse', brand: 'H&M', price: 1499, originalPrice: 2499, discount: 40, image: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=400'},
+    {id: 'tw4', name: 'Blazer Top', brand: 'Mango', price: 3299, image: 'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=400'},
+    {id: 'tw5', name: 'Ribbed Tank', brand: 'Uniqlo', price: 999, image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400'},
+  ] : [
+    {id: 'tm1', name: 'Graphic Tee', brand: 'Zara', price: 1499, originalPrice: 2199, discount: 32, image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400'},
+    {id: 'tm2', name: 'Oxford Shirt', brand: 'H&M', price: 1999, originalPrice: 2999, discount: 33, image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=400'},
+    {id: 'tm3', name: 'Striped Polo', brand: 'Ralph Lauren', price: 3499, image: 'https://images.unsplash.com/photo-1625910513413-5fc42eb01100?w=400'},
+    {id: 'tm4', name: 'Henley Sleeve', brand: 'Uniqlo', price: 1299, image: 'https://images.unsplash.com/photo-1618517351616-38fb9c5210c6?w=400'},
+    {id: 'tm5', name: 'Linen Shirt', brand: 'Mango', price: 2299, originalPrice: 3499, discount: 34, image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400'},
+  ];
+  const renderTopsSection = () => {
+    const isW = activeGender === 'Women';
+    return (
+      <View style={styles.topsSectionWrap}>
+        <View style={styles.topsBanner}>
+          <View style={styles.topsBannerLeft}>
+            <Text style={styles.topsBannerLabel}>NEW IN</Text>
+            <Text style={styles.topsBannerTitle}>{isW ? 'Tops That\nTurn Heads' : 'Layer Up\nYour Game'}</Text>
+            <Text style={styles.topsBannerSub}>{isW ? 'Blouses, tanks & beyond' : 'Tees, shirts & more'}</Text>
+            <TouchableOpacity style={[styles.topsBannerBtn, {borderColor: genderPalette.mid}]} activeOpacity={0.85}
+              onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Tops', products: PRODUCTS.filter(p => p.category === 'Tops')})}>
+              <Text style={[styles.topsBannerBtnText, {color: genderPalette.mid}]}>SHOP TOPS</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.topsBannerRight}>
+            <Image source={{uri: isW ? 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=500' : 'https://images.unsplash.com/photo-1621072156002-e2fccdc0b176?w=500'}} style={styles.topsBannerImg} resizeMode="cover" />
+          </View>
+        </View>
+        {renderProductCards(TOPS_PRODUCTS, 'tops')}
+      </View>
+    );
+  };
+
+  // ========== BOTTOMS — Dark full-bleed banner + 2-col grid ==========
+  const BOTTOMS_PRODUCTS = activeGender === 'Women' ? [
+    {id: 'bw1', name: 'Wide Leg Trousers', brand: 'Mango', price: 2799, originalPrice: 3999, discount: 30, image: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400'},
+    {id: 'bw2', name: 'Pleated Skirt', brand: 'Zara', price: 1999, image: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=400'},
+    {id: 'bw3', name: 'High Rise Jeans', brand: "Levi's", price: 3499, originalPrice: 4999, discount: 30, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400'},
+    {id: 'bw4', name: 'Satin Palazzo', brand: 'H&M', price: 1599, image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400'},
+  ] : [
+    {id: 'bm1', name: 'Slim Chinos', brand: 'Zara', price: 2499, originalPrice: 3499, discount: 28, image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400'},
+    {id: 'bm2', name: 'Relaxed Joggers', brand: 'Nike', price: 2999, image: 'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=400'},
+    {id: 'bm3', name: 'Cargo Pants', brand: 'H&M', price: 1799, originalPrice: 2499, discount: 28, image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400'},
+    {id: 'bm4', name: 'Classic Denim', brand: "Levi's", price: 3999, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400'},
+  ];
+  const renderBottomsSection = () => {
+    const isW = activeGender === 'Women';
+    return (
+      <View style={styles.bottomsSectionWrap}>
+        <View style={styles.bottomsBanner}>
+          <Image source={{uri: isW ? 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=900' : 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=900'}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+          <LinearGradient colors={[genderPalette.dark + 'E6', 'transparent', genderPalette.dark + 'CC']} locations={[0, 0.5, 1]} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}} />
+          <View style={{position: 'absolute', top: 24, left: 20, right: 20}}>
+            <Text style={styles.bottomsBannerTag}>BOTTOMS</Text>
+            <Text style={styles.bottomsBannerTitle}>{isW ? 'Perfect Fit\nBottoms' : 'Bottom Half\nGame'}</Text>
+          </View>
+          <TouchableOpacity style={[styles.bottomsBannerBtn, {backgroundColor: activeGender === 'Men' ? '#CDF564' : genderPalette.mid}]} activeOpacity={0.85}
+            onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Bottoms', products: PRODUCTS.filter(p => p.category === 'Bottoms')})}>
+            <Text style={styles.promoBannerBtnText}>SHOP BOTTOMS</Text>
+            <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : '#fff'} />
+          </TouchableOpacity>
+        </View>
+        {renderProductCards(BOTTOMS_PRODUCTS, 'bottoms')}
+      </View>
+    );
+  };
+
+  // ========== OUTERWEAR — Cinematic banner + large overlay cards ==========
+  const OUTER_PRODUCTS = activeGender === 'Women' ? [
+    {id: 'ow1', name: 'Trench Coat', brand: 'Burberry', price: 9999, image: 'https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=400'},
+    {id: 'ow2', name: 'Cropped Blazer', brand: 'Zara', price: 3999, originalPrice: 5999, discount: 33, image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400'},
+    {id: 'ow3', name: 'Teddy Coat', brand: 'Mango', price: 4999, originalPrice: 7499, discount: 33, image: 'https://images.unsplash.com/photo-1548624313-0396c75e4b1a?w=400'},
+  ] : [
+    {id: 'om1', name: 'Leather Bomber', brand: 'AllSaints', price: 8999, originalPrice: 12999, discount: 30, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400'},
+    {id: 'om2', name: 'Wool Overcoat', brand: 'Massimo Dutti', price: 7499, image: 'https://images.unsplash.com/photo-1544923246-77307dd270cb?w=400'},
+    {id: 'om3', name: 'Puffer Jacket', brand: 'North Face', price: 5999, originalPrice: 8999, discount: 33, image: 'https://images.unsplash.com/photo-1608063615781-e2ef8c73d114?w=400'},
+  ];
+  const renderOuterwearSection = () => {
+    const isW = activeGender === 'Women';
+    return (
+      <View style={styles.outerSectionWrap}>
+        <View style={styles.outerBanner}>
+          <Image source={{uri: isW ? 'https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=900' : 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=900'}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+          <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']} locations={[0, 0.4, 1]} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}} />
+          <View style={{position: 'absolute', bottom: 28, left: 20, right: 20}}>
+            <Text style={styles.outerBannerTitle}>{isW ? 'Wrap It Up' : 'Jacket Season'}</Text>
+            <Text style={styles.outerBannerSub}>{isW ? 'Coats, blazers & jackets' : 'Bombers, coats & layers'}</Text>
+          </View>
+        </View>
+        {renderProductCards(OUTER_PRODUCTS, 'outer')}
+      </View>
+    );
+  };
+
+  // ========== DRESSES — Tall portrait banner + tall portrait cards ==========
+  const DRESS_PRODUCTS = activeGender === 'Women' ? [
+    {id: 'dw1', name: 'Satin Midi', brand: 'Massimo Dutti', price: 4999, originalPrice: 7999, discount: 37, image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400'},
+    {id: 'dw2', name: 'Floral Maxi', brand: 'Zara', price: 2999, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400'},
+    {id: 'dw3', name: 'Bodycon Mini', brand: 'H&M', price: 1799, originalPrice: 2999, discount: 40, image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400'},
+    {id: 'dw4', name: 'Wrap Dress', brand: 'Mango', price: 3499, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400'},
+  ] : [
+    {id: 'dm1', name: 'Classic Suit', brand: 'Hugo Boss', price: 12999, originalPrice: 18999, discount: 31, image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400'},
+    {id: 'dm2', name: 'Formal Blazer', brand: 'Massimo Dutti', price: 6999, image: 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?w=400'},
+    {id: 'dm3', name: 'Tuxedo Jacket', brand: 'Armani', price: 15999, originalPrice: 22999, discount: 30, image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400'},
+    {id: 'dm4', name: 'Vest Set', brand: 'Zara', price: 4999, image: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400'},
+  ];
+  const renderDressesSection = () => {
+    const isW = activeGender === 'Women';
+    return (
+      <View style={styles.dressSectionWrap}>
+        <View style={styles.dressBanner}>
+          <Image source={{uri: isW ? 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=900' : 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=900'}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}} />
+          <View style={{position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingBottom: 24}}>
+            <Text style={styles.dressBannerTag}>{isW ? 'THE DRESS EDIT' : 'THE FORMAL EDIT'}</Text>
+            <Text style={styles.dressBannerTitle}>{isW ? 'Dress the Mood' : 'Suited & Booted'}</Text>
+            <TouchableOpacity style={[styles.dressBannerBtn, {borderColor: genderPalette.lightest}]} activeOpacity={0.85}
+              onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Dresses', products: PRODUCTS.filter(p => p.category === 'Dresses')})}>
+              <Text style={styles.dressBannerBtnText}>EXPLORE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {renderProductCards(DRESS_PRODUCTS, 'dress')}
+      </View>
+    );
+  };
+
+  // ========== ACTIVEWEAR — Gradient banner + compact rounded cards ==========
+  const ACTIVE_PRODUCTS = activeGender === 'Women' ? [
+    {id: 'aw1', name: 'Seamless Leggings', brand: 'Lululemon', price: 3999, originalPrice: 5999, discount: 33, image: 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=400'},
+    {id: 'aw2', name: 'Sports Bra', brand: 'Nike', price: 1499, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400'},
+    {id: 'aw3', name: 'Yoga Tank', brand: 'Alo Yoga', price: 2499, originalPrice: 3499, discount: 28, image: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=400'},
+    {id: 'aw4', name: 'Running Jacket', brand: 'Adidas', price: 2999, image: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=400'},
+    {id: 'aw5', name: 'Biker Shorts', brand: 'Puma', price: 1199, image: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400'},
+  ] : [
+    {id: 'am1', name: 'Dri-Fit Tee', brand: 'Nike', price: 1999, originalPrice: 2999, discount: 33, image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400'},
+    {id: 'am2', name: 'Compression Shorts', brand: 'Under Armour', price: 1799, image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400'},
+    {id: 'am3', name: 'Track Jacket', brand: 'Adidas', price: 3499, originalPrice: 4999, discount: 30, image: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400'},
+    {id: 'am4', name: 'Running Shorts', brand: 'Puma', price: 1299, image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400'},
+    {id: 'am5', name: 'Gym Hoodie', brand: 'Nike', price: 3999, image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=400'},
+  ];
+  const renderActivewearSection = () => {
+    const isW = activeGender === 'Women';
+    return (
+      <View style={styles.activeSectionWrap}>
+        <LinearGradient colors={[genderPalette.dark, genderPalette.mid, genderPalette.light + '80']} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.activeBanner}>
+          <View style={styles.activeBannerContent}>
+            <Text style={styles.activeBannerTag}>ACTIVEWEAR</Text>
+            <Text style={styles.activeBannerTitle}>{isW ? 'Move in\nStyle' : 'Train\nHarder'}</Text>
+            <Text style={styles.activeBannerSub}>{isW ? 'Leggings, sports bras & more' : 'Gym-ready essentials'}</Text>
+            <TouchableOpacity style={[styles.activeBannerBtn, activeGender === 'Men' && {backgroundColor: '#CDF564'}]} activeOpacity={0.85}
+              onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Activewear', products: PRODUCTS.filter(p => p.category === 'Activewear')})}>
+              <Text style={styles.activeBannerBtnText}>SHOP NOW</Text>
+              <Icon name="arrow-right" size={12} color={activeGender === 'Men' ? '#000' : genderPalette.dark} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.activeBannerImgWrap}>
+            <Image source={{uri: isW ? 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=500' : 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500'}} style={styles.activeBannerImg} resizeMode="cover" />
+          </View>
+        </LinearGradient>
+        {renderProductCards(ACTIVE_PRODUCTS, 'active')}
+      </View>
+    );
+  };
+
+
+  // ========== EXPLORE MORE — Pinterest masonry grid ==========
+  const EXPLORE_FILTERS = ['All', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories', 'Activewear'];
+
+  const filteredExploreProducts = useMemo(() => {
+    let prods = genderProducts;
+    if (exploreFilter !== 'All') {
+      prods = prods.filter(p => p.category === exploreFilter);
+    }
+    if (exploreSearchQuery.trim()) {
+      const q = exploreSearchQuery.toLowerCase();
+      prods = prods.filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q));
+    }
+    return prods;
+  }, [genderProducts, exploreFilter, exploreSearchQuery]);
+
+  const {leftCol, rightCol} = useMemo(() => {
+    const left: typeof filteredExploreProducts = [];
+    const right: typeof filteredExploreProducts = [];
+    filteredExploreProducts.forEach((p, i) => {
+      if (i % 2 === 0) left.push(p);
+      else right.push(p);
+    });
+    return {leftCol: left, rightCol: right};
+  }, [filteredExploreProducts]);
+
+
+  const renderExploreCard = (product: Product, index: number, colIndex: number) => {
+    const imgHeight = (index + colIndex) % 3 === 0 ? 220 : (index + colIndex) % 3 === 1 ? 180 : 150;
+    return (
+      <TouchableOpacity key={`explore-${product.id}`} style={styles.exploreCard} activeOpacity={0.9} onPress={() => {}}>
+        <View style={{width: '100%', height: imgHeight, borderRadius: 16, overflow: 'hidden'}}>
+          <Image source={{uri: product.images[0]}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+          <TouchableOpacity style={styles.exploreCardHeart} activeOpacity={0.7}>
+            <Icon name="heart" size={14} color="#fff" />
+          </TouchableOpacity>
+          {product.discount && (
+            <View style={[styles.exploreCardBadge, {backgroundColor: genderPalette.mid}]}>
+              <Text style={styles.shoeCardBadgeText}>{product.discount}% OFF</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.exploreCardInfo}>
+          <Text style={styles.exploreCardBrand}>{product.brand}</Text>
+          <Text style={styles.exploreCardName} numberOfLines={2}>{product.name}</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4}}>
+            <Text style={styles.exploreCardPrice}>{formatPrice(product.price)}</Text>
+            {product.originalPrice && (
+              <Text style={styles.exploreCardOldPrice}>{formatPrice(product.originalPrice)}</Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderExploreSection = () => {
+    const screenH = Dimensions.get('window').height;
+    return (
+      <View style={{height: screenH}}>
+        {/* These stay at the top when section fills viewport */}
+        <View style={styles.exploreHeader}>
+          <Text style={[styles.exploreTitle, {paddingHorizontal: SIZES.screenPadding}]}>Explore More</Text>
+
+          <View style={styles.exploreSearchBar}>
+            <Icon name="search" size={18} color="#999" />
+            <TextInput
+              style={styles.exploreSearchInput}
+              placeholder="Search products, brands..."
+              placeholderTextColor="#aaa"
+              value={exploreSearchQuery}
+              onChangeText={setExploreSearchQuery}
+            />
+            {exploreSearchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setExploreSearchQuery('')}>
+                <Icon name="x" size={16} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exploreFilterRow}>
+            {EXPLORE_FILTERS.map(f => (
+              <TouchableOpacity
+                key={f}
+                style={[styles.exploreFilterChip, exploreFilter === f && {backgroundColor: genderPalette.mid}]}
+                activeOpacity={0.8}
+                onPress={() => setExploreFilter(f)}
+              >
+                <Text style={[styles.exploreFilterChipText, exploreFilter === f && {color: '#fff'}]}>{f}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Products scroll in nested ScrollView */}
+        <ScrollView
+          style={{flex: 1}}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{paddingBottom: 100}}
+        >
+          <View style={styles.exploreMasonry}>
+            <View style={styles.exploreColumn}>
+              {leftCol.map((p, i) => renderExploreCard(p, i, 0))}
+            </View>
+            <View style={styles.exploreColumn}>
+              {rightCol.map((p, i) => renderExploreCard(p, i, 1))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
 
   // 9. Classic Black Banner
   const renderClassicBlack = () => (
@@ -804,7 +1318,7 @@ export default function HomeScreen({navigation}: Props) {
           </View>
           <View style={styles.floatingCartRight}>
             <Text style={styles.floatingCartCta}>View Cart</Text>
-            <Icon name="arrow-right" size={16} color={genderPalette.lightest} />
+            <Icon name="arrow-right" size={16} color={activeGender === 'Men' ? '#000' : genderPalette.lightest} />
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -814,6 +1328,7 @@ export default function HomeScreen({navigation}: Props) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={genderPalette.dark} />
+
 
       {/* Fixed Header — only when search is open */}
       {searchOverlayVisible && (
@@ -856,16 +1371,6 @@ export default function HomeScreen({navigation}: Props) {
         />
       )}
 
-      {/* Curtain Pull-to-Refresh */}
-      {!searchOverlayVisible && (
-        <CurtainRefresh
-          scrollY={scrollY}
-          palette={genderPalette}
-          onRefresh={onRefresh}
-          refreshing={refreshing}
-        />
-      )}
-
       {/* Main Scrollable Content */}
       {!searchOverlayVisible && (
       <Animated.View style={{flex: 1, opacity: fadeAnim, transform: [{translateY: slideAnim}]}}>
@@ -877,16 +1382,40 @@ export default function HomeScreen({navigation}: Props) {
         alwaysBounceVertical
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#000000"
+            colors={['#000000']}
+          />
+        }
         style={{flex: 1, backgroundColor: genderPalette.dark}}
         contentContainerStyle={cartItemCount > 0 ? {paddingBottom: 80} : undefined}>
 
-        {/* Top gradient */}
-        <LinearGradient
-          colors={isDark ? ['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)'] : ['rgba(250,250,248,0.9)', 'transparent']}
-          locations={isDark ? [0, 0.25, 0.5, 0.75, 1] : [0, 1]}
-          style={styles.topGradient}
-          pointerEvents="none"
-        />
+
+        {/* Full background gradient — black → blue → black (Starlink style) */}
+        {activeGender === 'Men' ? (
+          <View pointerEvents="none" style={{position: 'absolute', top: 0, left: 0, right: 0, height: 1800, zIndex: 0}}>
+            <LinearGradient
+              colors={['#060018', '#0D0033', '#1A0055', '#0D0033', '#060018', '#000000', '#000000', '#060018', '#0D0033', '#1A0055', '#0D0033', '#060018', '#000000']}
+              locations={[0, 0.02, 0.05, 0.1, 0.16, 0.25, 0.4, 0.5, 0.6, 0.68, 0.78, 0.88, 1]}
+              style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}}
+            />
+            <GrainOverlay />
+          </View>
+        ) : (
+          <LinearGradient
+            colors={
+              isDark
+                ? ['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']
+                : ['rgba(250,250,248,0.9)', 'transparent']
+            }
+            locations={isDark ? [0, 0.25, 0.5, 0.75, 1] : [0, 1]}
+            style={styles.topGradient}
+            pointerEvents="none"
+          />
+        )}
 
         {/* Header */}
         <View style={styles.headerCurved}>
@@ -991,10 +1520,48 @@ export default function HomeScreen({navigation}: Props) {
               {renderOffersGrid()}
             </AnimatedSection>
 
+            {/* 8.5 Accessories Banner */}
+            <AnimatedSection scrollY={scrollY} slideDistance={20}>
+              {renderAccessoriesBanner()}
+            </AnimatedSection>
+
+            {/* 8.6 Accessories Cards */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderAccessoryCards()}
+            </AnimatedSection>
+
+            {/* Tops */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderTopsSection()}
+            </AnimatedSection>
+
+            {/* Bottoms */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderBottomsSection()}
+            </AnimatedSection>
+
+            {/* Outerwear */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderOuterwearSection()}
+            </AnimatedSection>
+
+            {/* Dresses */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderDressesSection()}
+            </AnimatedSection>
+
+            {/* Activewear */}
+            <AnimatedSection scrollY={scrollY} slideDistance={25}>
+              {renderActivewearSection()}
+            </AnimatedSection>
+
             {/* 9. Classic Black Banner */}
             <AnimatedSection scrollY={scrollY} slideDistance={20}>
               {renderClassicBlack()}
             </AnimatedSection>
+
+            {/* 10. Explore More */}
+            {renderExploreSection()}
           </>
         )}
 
@@ -1008,8 +1575,9 @@ export default function HomeScreen({navigation}: Props) {
   );
 }
 
+
 const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light: string; mid: string; dark: string}) => StyleSheet.create({
-  container: {flex: 1, backgroundColor: gp.dark},
+  container: {flex: 1, backgroundColor: gp.dark === '#000000' ? '#0D0033' : gp.dark},
   topGradient: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 350, zIndex: 0,
   },
@@ -1018,12 +1586,13 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
     backgroundColor: 'transparent', paddingTop: 63, paddingBottom: 12, zIndex: 2,
   },
   headerInner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
   headerLeft: {flex: 1},
   deliveryTitleRow: {flexDirection: 'row', alignItems: 'baseline'},
   deliveryLabel: {
-    fontSize: 21, fontWeight: '600', fontFamily: 'Inter', color: gp.mid,
+    fontSize: 21, fontWeight: '600', fontFamily: 'Inter',
+    color: gp.dark === '#000000' ? '#CDF564' : gp.mid,
     letterSpacing: -0.08 * 21, lineHeight: 21,
   },
   deliveryTime: {
@@ -1066,39 +1635,41 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
     textShadowColor: '#000', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 6,
   },
   closetXAccent: {
-    fontSize: 45, fontWeight: '900', fontFamily: 'Jost', color: gp.mid,
+    fontSize: 45, fontWeight: '900', fontFamily: 'Jost',
+    color: gp.dark === '#000000' ? '#CDF564' : gp.mid,
     letterSpacing: -3.6, lineHeight: 45,
     textShadowColor: '#000', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 6,
   },
   heroBannerCard: {
-    width: '100%', aspectRatio: 1059 / 330, borderRadius: 16, overflow: 'hidden',
+    width: '100%', height: 120, borderRadius: 16, overflow: 'hidden',
     backgroundColor: 'transparent', zIndex: 1,
     justifyContent: 'center', alignItems: 'center',
   },
-  heroBannerShadow: {
-    shadowColor: '#000', shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
-  },
-  heroBannerImg: {width: '100%', height: undefined, aspectRatio: 1059 / 330, borderRadius: 16},
-  genderCardsRow: {flexDirection: 'row', gap: 14, marginTop: 80, overflow: 'visible'},
+  heroBannerShadow: {},
+  heroBannerImg: {width: '100%', height: 120, borderRadius: 16},
+  genderCardsRow: {flexDirection: 'row', gap: 16, marginTop: 40, overflow: 'visible'},
   genderCard: {
-    flex: 1, overflow: 'visible', borderRadius: 20,
+    flex: 1, overflow: 'visible', borderRadius: 16,
     borderWidth: 2.5, borderColor: 'transparent',
   },
   genderCardInner: {
-    height: 70, borderRadius: 20, overflow: 'visible', backgroundColor: gp.lightest + '15',
+    height: 55, borderRadius: 16, overflow: 'visible', backgroundColor: gp.lightest + '15',
+    position: 'relative',
   },
-  genderCardImg: {width: '100%', height: 140, marginTop: -70, borderRadius: 20},
+  genderCardImg: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    width: '100%', height: 90, borderRadius: 16,
+  },
   genderCardGradient: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: '60%',
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
   genderCardContent: {
-    position: 'absolute', bottom: 14, left: 16, right: 16,
+    position: 'absolute', top: 0, bottom: 0, left: 16, right: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   genderCardLabel: {
-    fontSize: 22, fontWeight: '800', fontFamily: 'Jost', color: '#FFFFFF',
+    fontSize: 20, fontWeight: '700', fontFamily: 'Helvetica', color: '#FFFFFF',
     letterSpacing: 3, textTransform: 'uppercase',
   },
   genderCardArrow: {
@@ -1114,9 +1685,9 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
     backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 20,
   },
   // Banner Carousel
-  bannerSection: {marginTop: 10, overflow: 'visible', zIndex: 2},
-  bannerList: {paddingHorizontal: 32, paddingVertical: 14},
-  bannerCard: {width: '100%', height: 380, borderRadius: 20, overflow: 'hidden'},
+  bannerSection: {marginTop: 10, overflow: 'visible', zIndex: 2, paddingVertical: 8},
+  bannerList: {paddingHorizontal: SIZES.screenPadding, paddingVertical: 10},
+  bannerCard: {width: '100%', height: 280, borderRadius: 16, overflow: 'hidden'},
   bannerBgImage: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%',
   },
@@ -1152,18 +1723,22 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
   },
   magShopBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', borderRadius: 6,
+    borderWidth: 1,
+    borderColor: gp.dark === '#000000' ? '#CDF564' : 'rgba(255,255,255,0.35)',
+    borderRadius: 6,
     paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'flex-start', marginTop: 4,
+    backgroundColor: gp.dark === '#000000' ? '#CDF564' : 'transparent',
   },
   magShopBtnText: {
-    fontSize: 10, fontWeight: FONT_WEIGHTS.bold, color: COLORS.white,
+    fontSize: 10, fontWeight: FONT_WEIGHTS.bold,
+    color: gp.dark === '#000000' ? '#000000' : COLORS.white,
     fontFamily: FONTS.sans, letterSpacing: 2,
   },
   bannerDots: {flexDirection: 'row', justifyContent: 'center', marginTop: 12},
   bannerDot: {
     width: 6, height: 6, borderRadius: 3, backgroundColor: gp.light + '30', marginHorizontal: 3,
   },
-  bannerDotActive: {width: 22, backgroundColor: '#FFFFFF'},
+  bannerDotActive: {width: 22, backgroundColor: gp.dark === '#000000' ? '#CDF564' : gp.mid},
 
   // --- 1. TICKET CATEGORIES ---
   ticketSection: {
@@ -1193,20 +1768,15 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
     overflow: 'visible',
   },
   ticketImageShadow: {
-    marginTop: -28,
+    marginTop: -20,
     backgroundColor: 'transparent',
-    width: 62, height: 62,
-    borderRadius: 31,
+    width: 48, height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FFFFFF',
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.8,
-    shadowRadius: 14,
-    elevation: 8,
   },
   ticketImage: {
-    width: 75, height: 75,
+    width: 55, height: 55,
   },
   ticketPerforation: {
     flexDirection: 'row',
@@ -1273,57 +1843,52 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
   },
   promoBannerBtnText: {
     fontSize: 12, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans,
-    color: '#FFFFFF', letterSpacing: 1,
+    color: gp.dark === '#000000' ? '#000000' : '#FFFFFF', letterSpacing: 1,
   },
 
   // --- 3. DISCOVER BRANDS ---
-  brandsSection: {marginTop: 32, paddingHorizontal: SIZES.screenPadding},
-  brandsGridWrap: {
-    overflow: 'visible',
-  },
-  brandsShadowLeft: {
-    position: 'absolute', left: -SIZES.screenPadding, top: -10, bottom: -10, width: 60,
-    zIndex: 5,
-  },
-  brandsShadowRight: {
-    position: 'absolute', right: -SIZES.screenPadding, top: -10, bottom: -10, width: 60,
-    zIndex: 5,
-  },
-  brandsArrowLeft: {
-    position: 'absolute', left: -12, top: '45%',
-    zIndex: 10, padding: 4,
-  },
-  brandsArrowRight: {
-    position: 'absolute', right: -12, top: '45%',
-    zIndex: 10, padding: 4,
-  },
+  brandsSection: {marginTop: 32, overflow: 'hidden'},
   brandsSectionTitle: {
     fontSize: 22, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.serif,
-    color: gp.lightest, marginBottom: 18,
+    color: gp.lightest, marginBottom: 18, paddingHorizontal: SIZES.screenPadding,
+  },
+  brandsGridWrap: {
+    position: 'relative',
+  },
+  brandsNavBtn: {
+    position: 'absolute', top: '50%', marginTop: -16,
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: gp.dark === '#000000' ? '#CDF564' : gp.mid,
+    justifyContent: 'center', alignItems: 'center',
+    zIndex: 5,
+    shadowColor: '#000', shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
+  },
+  brandsNavBtnLeft: {left: 2},
+  brandsNavBtnRight: {right: 2},
+  brandsScrollContent: {
+    paddingHorizontal: SIZES.screenPadding, gap: 12,
   },
   brandsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: SIZES.screenPadding,
+    gap: 10,
   },
-  brandGridCard: {
-    width: BRAND_CARD_W, height: BRAND_CARD_W,
-    backgroundColor: '#FFFFFF', borderRadius: 14,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 12, overflow: 'hidden',
+  brandsDots: {
+    flexDirection: 'row', justifyContent: 'center', marginTop: 14, gap: 6,
   },
-  brandGridLogo: {width: '75%', height: '75%'},
-  brandNewBadge: {
-    position: 'absolute', top: 6, right: 6,
-    backgroundColor: gp.mid, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  brandNewBadgeText: {
-    fontSize: 8, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans,
-    color: '#FFFFFF', letterSpacing: 0.5,
-  },
-  brandsDots: {flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12},
   brandsDot: {
     width: 6, height: 6, borderRadius: 3, backgroundColor: gp.light + '30',
   },
-  brandsDotActive: {width: 20, backgroundColor: gp.mid, borderRadius: 3},
+  brandsDotActive: {width: 20, backgroundColor: gp.dark === '#000000' ? '#CDF564' : gp.mid},
+  brandGridCard: {
+    width: (width - SIZES.screenPadding * 2 - 30) / 4,
+    height: (width - SIZES.screenPadding * 2 - 30) / 4,
+    backgroundColor: '#FFFFFF', borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
+  },
+  brandGridLogo: {width: '70%', height: '70%'},
 
   // --- 3.5 SHOE BANNER ---
   shoeBannerWrap: {marginTop: 28, width: '100%', height: 200, overflow: 'hidden'},
@@ -1334,7 +1899,10 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
   // --- 3.6 SHOE CARDS ---
   shoeCardsSection: {marginTop: 18},
   shoeCardsList: {paddingHorizontal: SIZES.screenPadding, gap: 12},
-  shoeCard: {width: 148, borderRadius: 14, backgroundColor: gp.dark, overflow: 'hidden'},
+  shoeCard: {
+    width: 148, borderRadius: 14, backgroundColor: gp.dark === '#000000' ? '#0A0A14' : gp.dark,
+    overflow: 'hidden', borderWidth: gp.dark === '#000000' ? 1 : 0, borderColor: gp.mid + '15',
+  },
   shoeCardImgWrap: {width: 148, height: 170, borderRadius: 14, overflow: 'hidden'},
   shoeCardImg: {width: '100%', height: '100%'},
   shoeCardBadge: {
@@ -1387,8 +1955,11 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
   },
   occasionCard: {
     width: (width - SIZES.screenPadding * 2 - 18) / 4,
-    height: ((width - SIZES.screenPadding * 2 - 18) / 4) * 1.3,
+    height: ((width - SIZES.screenPadding * 2 - 18) / 4) * 1.5,
     borderRadius: 12, overflow: 'hidden', marginBottom: 6,
+    backgroundColor: gp.dark === '#000000' ? '#0A0A14' : gp.mid + '30',
+    borderWidth: gp.dark === '#000000' ? 1 : 0,
+    borderColor: gp.mid + '20',
   },
   occasionImage: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%',
@@ -1397,11 +1968,19 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
   occasionTextWrap: {
-    position: 'absolute', bottom: 8, left: 0, right: 0, zIndex: 2,
+    position: 'absolute',
+    zIndex: 2,
+    width: ((width - SIZES.screenPadding * 2 - 18) / 4) * 1.3,
+    height: (width - SIZES.screenPadding * 2 - 18) / 4,
+    left: -(((width - SIZES.screenPadding * 2 - 18) / 4) * 1.3 - (width - SIZES.screenPadding * 2 - 18) / 4) / 2 - 30,
+    top: (((width - SIZES.screenPadding * 2 - 18) / 4) * 1.5 - (width - SIZES.screenPadding * 2 - 18) / 4) / 2,
+    transform: [{rotate: '-90deg'}],
+    justifyContent: 'center',
+    paddingLeft: 2,
   },
   occasionLabel: {
-    fontSize: 9, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans,
-    color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center',
+    fontSize: 10, fontWeight: FONT_WEIGHTS.bold, fontFamily: FONTS.sans,
+    color: '#FFFFFF', letterSpacing: 1.2, textAlign: 'left',
   },
 
   // --- 8. OFFERS GRID ---
@@ -1439,7 +2018,7 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
 
   // --- 9. CLASSIC BLACK ---
   classicSection: {marginTop: 32},
-  classicBg: {width: '100%', height: 360, overflow: 'hidden'},
+  classicBg: {width: '100%', height: 200, overflow: 'hidden'},
   classicGradient: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
@@ -1477,24 +2056,201 @@ const createStyles = (colors: any, isDark: boolean, gp: {lightest: string; light
   },
   floatingCartInner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: gp.mid, borderRadius: SIZES.radiusMd,
-    paddingVertical: 12, paddingHorizontal: 16, ...SHADOWS.large,
+    backgroundColor: gp.dark === '#000000' ? '#CDF564' : gp.mid,
+    borderRadius: SIZES.radiusMd,
+    paddingVertical: 12, paddingHorizontal: 16,
+    shadowColor: gp.dark === '#000000' ? '#CDF564' : gp.mid,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4, shadowRadius: 16, elevation: 6,
   },
   floatingCartLeft: {flexDirection: 'row', alignItems: 'center', gap: 10},
   floatingCartBadge: {
-    width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.12)',
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: gp.dark === '#000000' ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.12)',
     justifyContent: 'center', alignItems: 'center',
   },
   floatingCartBadgeText: {
-    fontSize: 13, fontWeight: FONT_WEIGHTS.bold, color: '#FFFFFF', fontFamily: FONTS.sans,
+    fontSize: 13, fontWeight: FONT_WEIGHTS.bold,
+    color: gp.dark === '#000000' ? '#000000' : '#FFFFFF', fontFamily: FONTS.sans,
   },
-  floatingCartItems: {fontSize: 11, color: 'rgba(0,0,0,0.55)', fontFamily: FONTS.sans},
+  floatingCartItems: {
+    fontSize: 11, color: gp.dark === '#000000' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.55)',
+    fontFamily: FONTS.sans,
+  },
   floatingCartTotal: {
-    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.bold, color: '#FFFFFF', fontFamily: FONTS.sans,
+    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.bold,
+    color: gp.dark === '#000000' ? '#000000' : '#FFFFFF', fontFamily: FONTS.sans,
   },
   floatingCartRight: {flexDirection: 'row', alignItems: 'center', gap: 6},
   floatingCartCta: {
-    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold, color: '#FFFFFF', fontFamily: FONTS.sans,
+    fontSize: SIZES.body, fontWeight: FONT_WEIGHTS.semiBold,
+    color: gp.dark === '#000000' ? '#000000' : '#FFFFFF', fontFamily: FONTS.sans,
+  },
+
+  // --- TOPS SECTION ---
+  topsSectionWrap: {marginTop: 32},
+  topsBanner: {
+    flexDirection: 'row', borderRadius: 0,
+    overflow: 'hidden', backgroundColor: gp.dark === '#000000' ? '#0A0A14' : gp.lightest + '10', height: 180,
+    borderTopWidth: gp.dark === '#000000' ? 1 : 0,
+    borderBottomWidth: gp.dark === '#000000' ? 1 : 0,
+    borderColor: gp.mid + '15',
+  },
+  topsBannerLeft: {flex: 1, padding: 20, justifyContent: 'center'},
+  topsBannerLabel: {
+    fontSize: 10, fontWeight: '700' as any, color: gp.light, letterSpacing: 2,
+    fontFamily: FONTS.sans, marginBottom: 6,
+  },
+  topsBannerTitle: {
+    fontSize: 22, fontWeight: '800' as any, color: gp.lightest, fontFamily: FONTS.serif, lineHeight: 26,
+  },
+  topsBannerSub: {
+    fontSize: 11, color: gp.light, fontFamily: FONTS.sans, marginTop: 4, fontStyle: 'italic',
+  },
+  topsBannerBtn: {
+    borderWidth: 1.5, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16,
+    alignSelf: 'flex-start', marginTop: 12,
+  },
+  topsBannerBtnText: {fontSize: 10, fontWeight: '700' as any, letterSpacing: 2, fontFamily: FONTS.sans},
+  topsBannerRight: {width: '42%', overflow: 'hidden'},
+  topsBannerImg: {width: '100%', height: '100%'},
+
+  // --- BOTTOMS SECTION ---
+  bottomsSectionWrap: {marginTop: 32},
+  bottomsBanner: {
+    height: 200, overflow: 'hidden',
+  },
+  bottomsBannerTag: {
+    fontSize: 10, fontWeight: '700' as any, color: gp.light, letterSpacing: 3,
+    fontFamily: FONTS.sans, marginBottom: 6,
+  },
+  bottomsBannerTitle: {
+    fontSize: 26, fontWeight: '800' as any, color: '#fff', fontFamily: FONTS.serif, lineHeight: 30,
+  },
+  bottomsBannerBtn: {
+    position: 'absolute', bottom: 16, right: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8,
+  },
+
+  // --- OUTERWEAR SECTION ---
+  outerSectionWrap: {marginTop: 32},
+  outerBanner: {
+    height: 260, overflow: 'hidden',
+  },
+  outerBannerTitle: {
+    fontSize: 30, fontWeight: '800' as any, color: '#fff', fontFamily: FONTS.serif, lineHeight: 34,
+  },
+  outerBannerSub: {
+    fontSize: 12, color: 'rgba(255,255,255,0.7)', fontFamily: FONTS.sans, marginTop: 4, fontStyle: 'italic',
+  },
+
+  // --- DRESSES SECTION ---
+  dressSectionWrap: {marginTop: 32},
+  dressBanner: {
+    height: 320, overflow: 'hidden',
+  },
+  dressBannerTag: {
+    fontSize: 10, fontWeight: '700' as any, color: 'rgba(255,255,255,0.6)', letterSpacing: 3,
+    fontFamily: FONTS.sans, marginBottom: 4,
+  },
+  dressBannerTitle: {
+    fontSize: 28, fontWeight: '800' as any, color: '#fff', fontFamily: FONTS.serif,
+    textAlign: 'center', letterSpacing: 1,
+  },
+  dressBannerBtn: {
+    borderWidth: 1.5, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24, marginTop: 12,
+  },
+  dressBannerBtnText: {
+    fontSize: 11, fontWeight: '700' as any, color: '#fff', letterSpacing: 2, fontFamily: FONTS.sans,
+  },
+
+  // --- ACTIVEWEAR SECTION ---
+  activeSectionWrap: {marginTop: 32},
+  activeBanner: {
+    overflow: 'hidden',
+    flexDirection: 'row', height: 180,
+  },
+  activeBannerContent: {flex: 1, padding: 20, justifyContent: 'center'},
+  activeBannerTag: {
+    fontSize: 10, fontWeight: '700' as any, color: 'rgba(255,255,255,0.6)', letterSpacing: 2,
+    fontFamily: FONTS.sans, marginBottom: 4,
+  },
+  activeBannerTitle: {
+    fontSize: 24, fontWeight: '800' as any, color: '#fff', fontFamily: FONTS.serif, lineHeight: 28,
+  },
+  activeBannerSub: {
+    fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: FONTS.sans, marginTop: 4,
+  },
+  activeBannerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#fff', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16,
+    alignSelf: 'flex-start', marginTop: 12,
+  },
+  activeBannerBtnText: {
+    fontSize: 10, fontWeight: '700' as any, letterSpacing: 1.5, fontFamily: FONTS.sans,
+  },
+  activeBannerImgWrap: {width: '40%', overflow: 'hidden'},
+  activeBannerImg: {width: '100%', height: '100%'},
+
+  // --- EXPLORE MORE SECTION ---
+  exploreHeader: {
+    paddingBottom: 4, backgroundColor: gp.dark,
+  },
+  exploreTitle: {
+    fontSize: 22, fontWeight: '700' as any, color: gp.lightest, fontFamily: FONTS.serif,
+    marginBottom: 14,
+  },
+  exploreSearchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: gp.dark === '#000000' ? '#0A0A14' : '#fff',
+    marginHorizontal: SIZES.screenPadding, borderRadius: 12, paddingHorizontal: 14,
+    height: 44, gap: 10,
+    borderWidth: gp.dark === '#000000' ? 1 : 0,
+    borderColor: gp.mid + '25',
+  },
+  exploreSearchInput: {
+    flex: 1, fontSize: 14, fontFamily: FONTS.sans,
+    color: gp.dark === '#000000' ? gp.lightest : '#1a1a1a', paddingVertical: 0,
+  },
+  exploreFilterRow: {
+    paddingHorizontal: SIZES.screenPadding, gap: 8, paddingVertical: 14,
+  },
+  exploreFilterChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: gp.mid + '18',
+  },
+  exploreFilterChipText: {
+    fontSize: 12, fontWeight: '600' as any, color: gp.light, fontFamily: FONTS.sans,
+  },
+  exploreMasonry: {
+    flexDirection: 'row', paddingHorizontal: SIZES.screenPadding, gap: 12,
+  },
+  exploreColumn: {flex: 1, gap: 12},
+  exploreCard: {
+    backgroundColor: gp.dark === '#000000' ? '#0A0A14' : gp.dark, borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: gp.mid + '15',
+  },
+  exploreCardHeart: {
+    position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center',
+  },
+  exploreCardBadge: {
+    position: 'absolute', top: 8, left: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+  },
+  exploreCardInfo: {padding: 10},
+  exploreCardBrand: {
+    fontSize: 10, fontWeight: '600' as any, color: gp.light, fontFamily: FONTS.sans,
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  exploreCardName: {
+    fontSize: 13, fontWeight: '500' as any, color: gp.lightest, fontFamily: FONTS.sans, marginTop: 2,
+  },
+  exploreCardPrice: {
+    fontSize: 14, fontWeight: '700' as any, color: gp.lightest, fontFamily: FONTS.sans,
+  },
+  exploreCardOldPrice: {
+    fontSize: 11, fontFamily: FONTS.sans, color: gp.light, textDecorationLine: 'line-through' as const,
   },
 
   bottomSpacer: {height: 100},

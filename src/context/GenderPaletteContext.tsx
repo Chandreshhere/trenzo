@@ -8,7 +8,7 @@ export interface GenderPalette {
 }
 
 export const GENDER_PALETTES: Record<'Men' | 'Women', GenderPalette> = {
-  Men: {lightest: '#E7F0FA', light: '#7BA4D0', mid: '#2E5E99', dark: '#0D2440'},
+  Men: {lightest: '#F0EBFF', light: '#8B72FF', mid: '#4100F5', dark: '#000000'},
   Women: {lightest: '#F7E8EC', light: '#C57C8A', mid: '#732C3F', dark: '#1A0B12'},
 };
 

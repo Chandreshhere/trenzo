@@ -42,13 +42,13 @@ export const COLORS = {
   tabBarInactive: '#BBBBBB',
 };
 
-// Poppins — clean minimal sans-serif throughout
+// Helvetica Neue + SF Pro — clean minimal UI typography
 // fontWeight selects the correct variant (Light/Regular/Medium/SemiBold/Bold)
 export const FONTS = {
-  serif: 'Poppins',
-  sans: 'Poppins',
-  sansMedium: 'Poppins',
-  sansBold: 'Poppins',
+  serif: 'Helvetica Neue',
+  sans: 'Helvetica Neue',
+  sansMedium: 'Helvetica Neue',
+  sansBold: 'Helvetica Neue',
 };
 
 export const FONT_WEIGHTS = {
@@ -82,7 +82,7 @@ export const SIZES = {
   radiusXl: 24,
   radiusFull: 100,
 
-  screenPadding: 20,
+  screenPadding: 16,
 };
 
 export const SHADOWS = {
