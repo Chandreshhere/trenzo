@@ -1,4 +1,4 @@
-import React, {useRef, useEffect, useMemo} from 'react';
+import React, {useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,55 +9,21 @@ import {
   Dimensions,
   StatusBar,
   ScrollView,
-  ImageBackground,
-  FlatList,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
-import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
+import LinearGradient from 'react-native-linear-gradient';
+import BlurView from '../components/BlurFallback';
+import {SIZES} from '../utils/theme';
 import {CATEGORIES, PRODUCTS, BRANDS, formatPrice} from '../data/products';
 import Icon from '../components/Icon';
-import ProductCard from '../components/ProductCard';
 import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette} from '../context/GenderPaletteContext';
+import {useTabBar} from '../context/TabBarContext';
+import GenderGradientBg from '../components/GenderGradientBg';
 
-const {width} = Dimensions.get('window');
+const {width, height: SCREEN_H} = Dimensions.get('window');
 const PAD = SIZES.screenPadding;
-const HALF_CARD = (width - PAD * 2 - 12) / 2;
-
-// Curated collections for the categories page
-const FEATURED_COLLECTIONS = [
-  {
-    id: 'fc1',
-    title: 'Summer\nEssentials',
-    subtitle: 'Light fabrics & breezy fits',
-    image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600',
-    color: '#1A3B8A',
-    categories: ['Dresses', 'Tops'],
-  },
-  {
-    id: 'fc2',
-    title: 'Street\nReady',
-    subtitle: 'Urban fits for the bold',
-    image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=600',
-    color: '#3A6DD4',
-    categories: ['Bottoms', 'Shoes'],
-  },
-  {
-    id: 'fc3',
-    title: 'Accessory\nEdit',
-    subtitle: 'Complete your look',
-    image: 'https://images.unsplash.com/photo-1611923134239-b9be5816e23c?w=600',
-    color: '#D4A03A',
-    categories: ['Accessories', 'Bags'],
-  },
-];
-
-const TRENDING_CATS = [
-  {id: 'tc1', label: 'Co-ord Sets', icon: 'grid', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300'},
-  {id: 'tc2', label: 'Oversized Tees', icon: 'layers', image: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=300'},
-  {id: 'tc3', label: 'Wide Leg', icon: 'maximize', image: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=300'},
-  {id: 'tc4', label: 'Chunky Sneakers', icon: 'triangle', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300'},
-  {id: 'tc5', label: 'Mini Bags', icon: 'briefcase', image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300'},
-  {id: 'tc6', label: 'Layering', icon: 'cloud', image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300'},
-];
 
 interface Props {
   navigation: any;
@@ -65,186 +31,222 @@ interface Props {
 
 export default function CategoriesScreen({navigation}: Props) {
   const {colors, isDark} = useTheme();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const {palette: gp, activeGender} = useGenderPalette();
+  const {tabBarTranslateY} = useTabBar();
+  const accent = isDark ? (activeGender === 'Men' ? '#CDF564' : gp.mid) : gp.mid;
+  const accentText = isDark ? '#000' : '#FFF';
 
-  // Staggered entrance animations
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const cardsAnim = useRef(new Animated.Value(0)).current;
-  const trendAnim = useRef(new Animated.Value(0)).current;
-  const gridAnim = useRef(new Animated.Value(0)).current;
-  const brandsAnim = useRef(new Animated.Value(0)).current;
+  // Tab bar hide on scroll
+  const lastScrollYRef = useRef(0);
+  const isTabBarHidden = useRef(false);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const isDown = y > lastScrollYRef.current;
+    if (isDown && y > 60 && !isTabBarHidden.current) {
+      isTabBarHidden.current = true;
+      Animated.timing(tabBarTranslateY, {
+        toValue: 160,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    } else if (!isDown && isTabBarHidden.current) {
+      isTabBarHidden.current = false;
+      Animated.timing(tabBarTranslateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+    lastScrollYRef.current = y;
+  }, [tabBarTranslateY]);
+
+  // Staggered entrance
+  const anim0 = useRef(new Animated.Value(0)).current;
+  const anim1 = useRef(new Animated.Value(0)).current;
+  const anim2 = useRef(new Animated.Value(0)).current;
+  const anim3 = useRef(new Animated.Value(0)).current;
+  const anim4 = useRef(new Animated.Value(0)).current;
+  const anims = [anim0, anim1, anim2, anim3, anim4];
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.stagger(120, [
-      Animated.spring(headerAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-      Animated.spring(heroAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-      Animated.spring(cardsAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-      Animated.spring(trendAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-      Animated.spring(gridAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-      Animated.spring(brandsAnim, {toValue: 1, friction: 8, tension: 50, useNativeDriver: true}),
-    ]).start();
+    Animated.stagger(90, anims.map(a =>
+      Animated.spring(a, {toValue: 1, friction: 9, tension: 55, useNativeDriver: true}),
+    )).start();
   }, []);
 
-  const animStyle = (anim: Animated.Value, offset = 30) => ({
-    opacity: anim,
-    transform: [{translateY: anim.interpolate({inputRange: [0, 1], outputRange: [offset, 0]})}],
+  const anim = (i: number, offset = 40) => ({
+    opacity: anims[i],
+    transform: [{translateY: anims[i].interpolate({inputRange: [0, 1], outputRange: [offset, 0]})}],
   });
 
-  const handleCategoryPress = (categoryName: string) => {
-    const filtered = PRODUCTS.filter(p => p.category === categoryName);
-    navigation.navigate('CategoryProducts', {categoryName, products: filtered});
+  const handleCategoryPress = (name: string) => {
+    navigation.navigate('CategoryDetail', {categoryType: name});
   };
 
-  const handleCollectionPress = (collection: typeof FEATURED_COLLECTIONS[0]) => {
-    const products = PRODUCTS.filter(p => collection.categories.includes(p.category));
-    navigation.navigate('CategoryProducts', {categoryName: collection.title.replace('\n', ' '), products});
+  const topPicks = useMemo(() => [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 6), []);
+
+  // --- HERO: Full-bleed editorial with parallax ---
+  const renderHero = () => {
+    const parallax = scrollY.interpolate({inputRange: [-100, 0, 300], outputRange: [50, 0, -80], extrapolate: 'clamp'});
+    const heroScale = scrollY.interpolate({inputRange: [-200, 0], outputRange: [1.3, 1], extrapolate: 'clamp'});
+    const titleSlide = scrollY.interpolate({inputRange: [0, 250], outputRange: [0, -40], extrapolate: 'clamp'});
+
+    return (
+      <Animated.View style={[{height: SCREEN_H * 0.48, overflow: 'hidden'}, anim(0, 0)]}>
+        <Animated.Image
+          source={{uri: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=900'}}
+          style={[StyleSheet.absoluteFill, {transform: [{translateY: parallax}, {scale: heroScale}]}]}
+          resizeMode="cover"
+        />
+        {/* Dark gradient overlay */}
+        <LinearGradient
+          colors={['transparent', 'transparent', isDark ? 'rgba(0,0,0,0.7)' : 'rgba(250,250,250,0.6)', isDark ? '#000' : '#FAFAFA']}
+          locations={[0, 0.3, 0.7, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Top bar */}
+        <View style={s.heroTopBar}>
+          <View style={{flex: 1}} />
+          <TouchableOpacity style={s.heroSearchBtn}>
+            <Icon name="search" size={18} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        {/* Editorial title at bottom */}
+        <Animated.View style={[s.heroContent, {transform: [{translateY: titleSlide}]}]}>
+          <View style={[s.heroAccentLine, {backgroundColor: accent}]} />
+          <Text style={[s.heroTag, {color: accent}]}>EXPLORE</Text>
+          <Text style={[s.heroTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Shop by{'\n'}Category</Text>
+          <Text style={[s.heroSub, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}]}>
+            {CATEGORIES.length} categories, {PRODUCTS.length}+ products
+          </Text>
+        </Animated.View>
+      </Animated.View>
+    );
   };
 
-  const topPicks = [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 8);
-
-  // --- HERO BANNER ---
-  const renderHero = () => (
-    <Animated.View style={[animStyle(heroAnim)]}>
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={styles.heroBanner}
-        onPress={() => handleCollectionPress(FEATURED_COLLECTIONS[0])}>
-        <ImageBackground
-          source={{uri: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800'}}
-          style={styles.heroImage}
-          imageStyle={{borderRadius: 22}}>
-          <View style={styles.heroOverlay}>
-            <View style={styles.heroTagWrap}>
-              <Text style={styles.heroTag}>FEATURED</Text>
-            </View>
-            <View style={styles.heroBottom}>
-              <Text style={styles.heroTitle}>Shop by{'\n'}Category</Text>
-              <Text style={styles.heroSub}>Discover curated collections for every style</Text>
-            </View>
-          </View>
-        </ImageBackground>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
-  // --- FEATURED COLLECTIONS (horizontal scroll) ---
-  const renderCollections = () => (
-    <Animated.View style={[styles.section, animStyle(cardsAnim)]}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>CURATED FOR YOU</Text>
-          <Text style={styles.sectionTitle}>Collections</Text>
-        </View>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: PAD, gap: 14}}
-        decelerationRate="fast">
-        {FEATURED_COLLECTIONS.map(col => (
-          <TouchableOpacity
-            key={col.id}
-            style={styles.collectionCard}
-            activeOpacity={0.9}
-            onPress={() => handleCollectionPress(col)}>
-            <ImageBackground
-              source={{uri: col.image}}
-              style={styles.collectionImage}
-              imageStyle={{borderRadius: 18}}>
-              <View style={styles.collectionOverlay}>
-                <View style={[styles.collectionAccent, {backgroundColor: col.color}]} />
-                <Text style={styles.collectionTitle}>{col.title}</Text>
-                <Text style={styles.collectionSub}>{col.subtitle}</Text>
-                <View style={styles.collectionBtn}>
-                  <Text style={styles.collectionBtnText}>Explore</Text>
-                </View>
-              </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </Animated.View>
-  );
-
-  // --- TRENDING CATEGORIES (circular cards) ---
-  const renderTrendingCats = () => (
-    <Animated.View style={[styles.section, animStyle(trendAnim)]}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>TRENDING NOW</Text>
-          <Text style={styles.sectionTitle}>What's Hot</Text>
-        </View>
-      </View>
-      <FlatList
-        data={TRENDING_CATS}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: PAD}}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
-          <TouchableOpacity
-            style={styles.trendCatItem}
-            activeOpacity={0.8}
-            onPress={() => handleCategoryPress(item.label)}>
-            <View style={styles.trendCatImageWrap}>
-              <Image source={{uri: item.image}} style={styles.trendCatImage} />
-            </View>
-            <Text style={styles.trendCatLabel} numberOfLines={1}>{item.label}</Text>
-          </TouchableOpacity>
-        )}
-      />
-    </Animated.View>
-  );
-
-  // --- MAIN CATEGORIES GRID (mosaic layout) ---
-  const renderCategoryGrid = () => {
+  // --- CATEGORY GRID: Large editorial cards with stagger ---
+  const renderCategoryCards = () => {
     const cats = CATEGORIES;
     return (
-      <Animated.View style={[styles.section, animStyle(gridAnim)]}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTag}>ALL CATEGORIES</Text>
-            <Text style={styles.sectionTitle}>Browse Everything</Text>
-          </View>
-        </View>
-        <View style={styles.mosaicWrap}>
-          {cats.map((cat, i) => {
-            // Mosaic pattern: 0=full, 1-2=half, 3-4=half, 5=full, 6=half...
-            const pattern = i % 5;
-            const isFull = pattern === 0;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[styles.mosaicCard, isFull ? styles.mosaicFull : styles.mosaicHalf]}
-                activeOpacity={0.85}
-                onPress={() => handleCategoryPress(cat.name)}>
-                <Image source={{uri: cat.image}} style={styles.mosaicImage} resizeMode="cover" />
-                <View style={styles.mosaicOverlay} />
-                <View style={styles.mosaicContent}>
-                  <View style={styles.mosaicIconWrap}>
-                    <Icon name={cat.icon} size={16} color="#FFF" />
-                  </View>
-                  <Text style={styles.mosaicName}>{cat.name}</Text>
+      <Animated.View style={[{marginTop: -20}, anim(1, 30)]}>
+        {/* First row: 2 tall cards */}
+        <View style={s.cardRow}>
+          {cats.slice(0, 2).map((cat, i) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[s.catCard, s.catCardTall]}
+              activeOpacity={0.88}
+              onPress={() => handleCategoryPress(cat.name)}>
+              <Image source={{uri: cat.image}} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.75)']}
+                locations={[0.3, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              {/* Glass pill at top */}
+              <View style={s.catCardTopPill}>
+                <BlurView blurType="dark" blurAmount={12} style={StyleSheet.absoluteFill} />
+                <Text style={s.catCardCount}>{cat.itemCount} items</Text>
+              </View>
+              {/* Bottom content */}
+              <View style={s.catCardBottom}>
+                <View style={[s.catIconCircle, {backgroundColor: i === 0 ? accent : gp.light}]}>
+                  <Icon name={cat.icon} size={14} color={i === 0 ? accentText : '#FFF'} />
                 </View>
-                {/* Glass shimmer accent */}
-                <View style={styles.mosaicGlassEdge} />
-              </TouchableOpacity>
-            );
-          })}
+                <Text style={s.catCardName}>{cat.name}</Text>
+              </View>
+              {/* Accent edge */}
+              <View style={[s.catCardEdge, {backgroundColor: i === 0 ? accent : gp.light}]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Second row: 3 compact cards */}
+        <View style={[s.cardRow, {marginTop: 10}]}>
+          {cats.slice(2, 5).map((cat, i) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[s.catCard, s.catCardCompact]}
+              activeOpacity={0.88}
+              onPress={() => handleCategoryPress(cat.name)}>
+              <Image source={{uri: cat.image}} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                locations={[0.2, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={s.catCardBottom}>
+                <Text style={[s.catCardName, {fontSize: 13}]}>{cat.name}</Text>
+                <Text style={s.catCardCountSm}>{cat.itemCount}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Full-width feature card */}
+        <View style={{paddingHorizontal: PAD, marginTop: 10}}>
+          {cats[5] && (
+            <TouchableOpacity
+              style={s.catCardWide}
+              activeOpacity={0.88}
+              onPress={() => handleCategoryPress(cats[5].name)}>
+              <Image source={{uri: cats[5].image}} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']}
+                locations={[0, 1]}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={s.wideCardContent}>
+                <View style={[s.wideAccent, {backgroundColor: accent}]} />
+                <View style={{flex: 1}}>
+                  <Text style={s.wideCardName}>{cats[5].name}</Text>
+                  <Text style={s.wideCardSub}>{cats[5].itemCount} styles to explore</Text>
+                </View>
+                <View style={[s.wideArrow, {backgroundColor: accent}]}>
+                  <Icon name="arrow-right" size={16} color={accentText} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Last 2 cards */}
+        <View style={[s.cardRow, {marginTop: 10}]}>
+          {cats.slice(6, 8).map(cat => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[s.catCard, s.catCardTall]}
+              activeOpacity={0.88}
+              onPress={() => handleCategoryPress(cat.name)}>
+              <Image source={{uri: cat.image}} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.75)']}
+                locations={[0.3, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={s.catCardBottom}>
+                <View style={[s.catIconCircle, {backgroundColor: gp.light}]}>
+                  <Icon name={cat.icon} size={14} color="#FFF" />
+                </View>
+                <Text style={s.catCardName}>{cat.name}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       </Animated.View>
     );
   };
 
-  // --- SHOP BY BRAND strip ---
-  const renderBrandStrip = () => (
-    <Animated.View style={[styles.section, animStyle(brandsAnim)]}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>TOP BRANDS</Text>
-          <Text style={styles.sectionTitle}>Shop by Brand</Text>
-        </View>
+  // --- BRANDS: Horizontal glass cards ---
+  const renderBrands = () => (
+    <Animated.View style={[{marginTop: 36}, anim(2)]}>
+      <View style={s.sectionHeader}>
+        <Text style={[s.sectionTag, {color: accent}]}>TOP BRANDS</Text>
+        <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Shop by Brand</Text>
       </View>
       <ScrollView
         horizontal
@@ -253,412 +255,322 @@ export default function CategoriesScreen({navigation}: Props) {
         {BRANDS.map(brand => (
           <TouchableOpacity
             key={brand.id}
-            style={styles.brandChip}
+            style={[s.brandCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}]}
             activeOpacity={0.8}
             onPress={() => {
-              const prods = PRODUCTS.filter(p => p.brand === brand.name);
-              navigation.navigate('CategoryProducts', {categoryName: brand.name, products: prods});
+              navigation.navigate('CategoryDetail', {categoryType: brand.name});
             }}>
-            <Image source={{uri: brand.logo}} style={styles.brandLogo} resizeMode="contain" />
-            <Text style={styles.brandName}>{brand.name}</Text>
-            <Text style={styles.brandTagline} numberOfLines={1}>{brand.tagline}</Text>
+            <Image source={{uri: brand.logo}} style={s.brandLogo} resizeMode="contain" />
+            <Text style={[s.brandName, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{brand.name}</Text>
+            <Text style={[s.brandCount, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>{brand.productCount} products</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
     </Animated.View>
   );
 
-  // --- TOP PICKS HORIZONTAL ---
+  // --- TOP PICKS: Editorial product strip ---
   const renderTopPicks = () => (
-    <Animated.View style={[styles.section, animStyle(brandsAnim, 20)]}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>EDITORS PICK</Text>
-          <Text style={styles.sectionTitle}>Top Rated Products</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.seeAllBtn}
-          onPress={() => navigation.navigate('CategoryProducts', {categoryName: 'Top Picks', products: topPicks})}>
-          <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
-        </TouchableOpacity>
+    <Animated.View style={[{marginTop: 36}, anim(3)]}>
+      <View style={s.sectionHeader}>
+        <Text style={[s.sectionTag, {color: accent}]}>EDITORS PICK</Text>
+        <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Top Rated</Text>
       </View>
-      <FlatList
-        data={topPicks}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: PAD}}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
+        contentContainerStyle={{paddingHorizontal: PAD, gap: 14}}
+        decelerationRate="fast">
+        {topPicks.map((item, i) => (
           <TouchableOpacity
-            style={styles.pickCard}
-            activeOpacity={0.85}
+            key={item.id}
+            style={s.pickCard}
+            activeOpacity={0.88}
             onPress={() => navigation.navigate('ProductDetail', {product: item})}>
-            <Image source={{uri: item.images[0]}} style={styles.pickImage} />
-            <View style={styles.pickRating}>
-              <Icon name="star" size={10} color="#F5A623" />
-              <Text style={styles.pickRatingText}>{item.rating}</Text>
+            <Image source={{uri: item.images[0]}} style={s.pickImage} />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.85)']}
+              locations={[0.45, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Rating badge */}
+            <View style={s.pickRating}>
+              <Icon name="star" size={9} color="#F5A623" />
+              <Text style={s.pickRatingText}>{item.rating}</Text>
             </View>
-            <View style={styles.pickInfo}>
-              <Text style={styles.pickBrand}>{item.brand}</Text>
-              <Text style={styles.pickName} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.pickPrice}>{formatPrice(item.price)}</Text>
+            {/* Bottom info */}
+            <View style={s.pickBottom}>
+              <Text style={s.pickBrand}>{item.brand}</Text>
+              <Text style={s.pickName} numberOfLines={1}>{item.name}</Text>
+              <View style={s.pickPriceRow}>
+                <Text style={s.pickPrice}>{formatPrice(item.price)}</Text>
+                {item.originalPrice && (
+                  <Text style={s.pickOrigPrice}>{formatPrice(item.originalPrice)}</Text>
+                )}
+              </View>
             </View>
+            {/* Number overlay */}
+            <Text style={s.pickNumber}>0{i + 1}</Text>
           </TouchableOpacity>
-        )}
-      />
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 
-  // --- PROMO BANNER ---
+  // --- PROMO: Full-width editorial banner ---
   const renderPromo = () => (
-    <Animated.View style={[styles.section, animStyle(brandsAnim, 15)]}>
-      <View style={{paddingHorizontal: PAD}}>
-        <TouchableOpacity style={styles.promoBanner} activeOpacity={0.9}>
-          <View style={styles.promoLeft}>
-            <Text style={styles.promoTag}>MEGA SALE</Text>
-            <Text style={styles.promoTitle}>Up to 60%{'\n'}Off</Text>
-            <Text style={styles.promoSub}>Across all categories</Text>
-            <View style={styles.promoCTA}>
-              <Text style={styles.promoCTAText}>Shop Sale</Text>
-              <Icon name="arrow-right" size={12} color={colors.accentForeground} />
-            </View>
+    <Animated.View style={[{marginTop: 36, paddingHorizontal: PAD}, anim(4)]}>
+      <TouchableOpacity style={[s.promoBanner, {backgroundColor: accent}]} activeOpacity={0.9}>
+        <View style={s.promoContent}>
+          <Text style={[s.promoTag, {color: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)'}]}>MEGA SALE</Text>
+          <Text style={[s.promoTitle, {color: accentText}]}>Up to 60%{'\n'}Off</Text>
+          <Text style={[s.promoSub, {color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)'}]}>Across all categories</Text>
+          <View style={[s.promoCta, {backgroundColor: isDark ? '#000' : '#FFF'}]}>
+            <Text style={[s.promoCtaText, {color: isDark ? '#FFF' : '#000'}]}>Shop Sale</Text>
+            <Icon name="arrow-right" size={12} color={isDark ? '#FFF' : '#000'} />
           </View>
-          <Image
-            source={{uri: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=300'}}
-            style={styles.promoImage}
-          />
-        </TouchableOpacity>
-      </View>
+        </View>
+        <View style={s.promoRight}>
+          <Text style={[s.promoBigNum, {color: isDark ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)'}]}>60%</Text>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA'}}>
+      <GenderGradientBg />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <Animated.View style={[styles.header, animStyle(headerAnim, 20)]}>
-          <View>
-            <Text style={styles.headerTag}>BROWSE</Text>
-            <Text style={styles.headerTitle}>Categories</Text>
-          </View>
-          <TouchableOpacity style={styles.headerSearchBtn}>
-            <Icon name="search" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </Animated.View>
-
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true, listener: handleScroll},
+        )}
+        scrollEventThrottle={16}>
         {renderHero()}
-        {renderCollections()}
-        {renderTrendingCats()}
-        {renderCategoryGrid()}
-        {renderBrandStrip()}
+        {renderCategoryCards()}
+        {renderBrands()}
         {renderTopPicks()}
         {renderPromo()}
-
         <View style={{height: 120}} />
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  // Header
-  header: {
+const s = StyleSheet.create({
+  // Hero
+  heroTopBar: {
+    position: 'absolute',
+    top: 54,
+    left: PAD,
+    right: PAD,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 10,
+  },
+  heroSearchBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 30,
+    left: PAD,
+    right: PAD,
+  },
+  heroAccentLine: {
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+    marginBottom: 10,
+  },
+  heroTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    letterSpacing: 3,
+    marginBottom: 6,
+  },
+  heroTitle: {
+    fontSize: 38,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    lineHeight: 42,
+  },
+  heroSub: {
+    fontSize: 13,
+    fontFamily: 'Helvetica',
+    marginTop: 6,
+  },
+
+  // Category cards
+  cardRow: {
+    flexDirection: 'row',
     paddingHorizontal: PAD,
-    paddingTop: 60,
-    paddingBottom: 16,
+    gap: 10,
   },
-  headerTag: {
+  catCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  catCardTall: {
+    flex: 1,
+    height: 220,
+  },
+  catCardCompact: {
+    flex: 1,
+    height: 130,
+  },
+  catCardWide: {
+    width: '100%',
+    height: 100,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  catCardTopPill: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  catCardCount: {
     fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
-    letterSpacing: 1.5,
-    marginBottom: 2,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.9)',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+  catCardBottom: {
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    right: 14,
   },
-  headerSearchBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.glassMedium,
+  catIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  catCardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    color: '#FFF',
+  },
+  catCardCountSm: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 1,
+  },
+  catCardEdge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  wideCardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  wideAccent: {
+    width: 4,
+    height: 40,
+    borderRadius: 2,
+    marginRight: 14,
+  },
+  wideCardName: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    color: '#FFF',
+  },
+  wideCardSub: {
+    fontSize: 12,
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
+  },
+  wideArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Hero
-  heroBanner: {
-    marginHorizontal: PAD,
-    marginBottom: 6,
-  },
-  heroImage: {
-    width: '100%',
-    height: 200,
-  },
-  heroOverlay: {
-    flex: 1,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 22,
-    justifyContent: 'space-between',
-  },
-  heroTagWrap: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  heroTag: {
-    color: colors.background,
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    letterSpacing: 1.2,
-  },
-  heroBottom: {},
-  heroTitle: {
-    color: '#FFF',
-    fontSize: 28,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    lineHeight: 33,
-  },
-  heroSub: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontFamily: 'Poppins',
-    marginTop: 4,
-  },
-  // Sections
-  section: {
-    marginTop: 28,
-  },
+
+  // Section headers
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
     paddingHorizontal: PAD,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTag: {
     fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
-    letterSpacing: 1.5,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    letterSpacing: 2,
     marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
   },
-  seeAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  seeAllText: {
-    fontSize: 13,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
-  },
-  // Featured Collections
-  collectionCard: {
-    width: width * 0.65,
-  },
-  collectionImage: {
-    width: '100%',
-    height: 220,
-  },
-  collectionOverlay: {
-    flex: 1,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    padding: 20,
-    justifyContent: 'flex-end',
-  },
-  collectionAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 4,
-    height: 50,
-    borderTopLeftRadius: 18,
-    borderBottomRightRadius: 8,
-  },
-  collectionTitle: {
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    lineHeight: 29,
-  },
-  collectionSub: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontFamily: 'Poppins',
-    marginTop: 4,
-  },
-  collectionBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  collectionBtnText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-  },
-  // Trending Categories
-  trendCatItem: {
-    alignItems: 'center',
-    marginRight: 18,
-    width: 76,
-  },
-  trendCatImageWrap: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 2.5,
-    borderColor: colors.accent,
-    padding: 3,
-    overflow: 'hidden',
-  },
-  trendCatImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 32,
-  },
-  trendCatLabel: {
-    fontSize: 11,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  // Mosaic Grid
-  mosaicWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: PAD,
-    gap: 12,
-  },
-  mosaicCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  mosaicFull: {
-    width: '100%',
-    height: 160,
-  },
-  mosaicHalf: {
-    width: HALF_CARD,
-    height: 180,
-  },
-  mosaicImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  mosaicOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.32)',
-  },
-  mosaicContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 16,
-  },
-  mosaicIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  mosaicName: {
-    fontSize: 18,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: '#FFF',
-  },
-  mosaicGlassEdge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '50%',
-    height: 3,
-    backgroundColor: colors.glassHeavy,
-    borderTopRightRadius: 18,
-  },
+
   // Brands
-  brandChip: {
-    width: 120,
-    backgroundColor: colors.glassLight,
+  brandCard: {
+    width: 130,
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     alignItems: 'center',
+    borderWidth: 1,
   },
   brandLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.glassLight,
-    marginBottom: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 10,
   },
   brandName: {
     fontSize: 13,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
     textAlign: 'center',
   },
-  brandTagline: {
+  brandCount: {
     fontSize: 10,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
-    textAlign: 'center',
+    fontFamily: 'Helvetica',
     marginTop: 2,
   },
+
   // Top Picks
   pickCard: {
-    width: 150,
-    marginRight: 12,
-    backgroundColor: colors.glassLight,
-    borderRadius: 14,
+    width: 160,
+    height: 230,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   pickImage: {
     width: '100%',
-    height: 180,
-    backgroundColor: colors.glassLight,
+    height: '100%',
+    position: 'absolute',
   },
   pickRating: {
     position: 'absolute',
@@ -667,96 +579,119 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   pickRatingText: {
-    fontSize: 11,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
   },
-  pickInfo: {
-    padding: 10,
+  pickBottom: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
   },
   pickBrand: {
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   pickName: {
     fontSize: 13,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
     marginTop: 2,
+  },
+  pickPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
   },
   pickPrice: {
     fontSize: 14,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-    marginTop: 4,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
   },
+  pickOrigPrice: {
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.4)',
+    textDecorationLine: 'line-through',
+  },
+  pickNumber: {
+    position: 'absolute',
+    top: 8,
+    left: 12,
+    fontSize: 32,
+    fontWeight: '800',
+    fontFamily: 'Rondira-Medium',
+    color: 'rgba(255,255,255,0.08)',
+  },
+
   // Promo
   promoBanner: {
-    flexDirection: 'row',
-    backgroundColor: colors.accent,
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: 'hidden',
-    minHeight: 170,
+    flexDirection: 'row',
+    minHeight: 180,
   },
-  promoLeft: {
+  promoContent: {
     flex: 1,
-    padding: 22,
+    padding: 24,
     justifyContent: 'center',
   },
   promoTag: {
     fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: 'rgba(0,0,0,0.5)',
-    letterSpacing: 1.5,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    letterSpacing: 2,
     marginBottom: 4,
   },
   promoTitle: {
-    fontSize: 28,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: colors.accentText,
-    lineHeight: 33,
+    fontSize: 30,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    lineHeight: 34,
   },
   promoSub: {
     fontSize: 12,
-    fontFamily: 'Poppins',
-    color: 'rgba(0,0,0,0.5)',
+    fontFamily: 'Helvetica',
     marginTop: 4,
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  promoCTA: {
+  promoCta: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRadius: 22,
     gap: 6,
   },
-  promoCTAText: {
+  promoCtaText: {
     fontSize: 12,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
-  promoImage: {
-    width: 140,
-    height: '100%',
-    opacity: 0.5,
+  promoRight: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 120,
+  },
+  promoBigNum: {
+    fontSize: 72,
+    fontWeight: '900',
+    fontFamily: 'Rondira-Medium',
   },
 });

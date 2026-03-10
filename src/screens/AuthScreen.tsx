@@ -1,4 +1,4 @@
-import React, {useState, useRef, useMemo} from 'react';
+import React, {useState, useRef, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Alert,
   ScrollView,
   Dimensions,
+  Modal,
 } from 'react-native';
+import BlurView from '../components/BlurFallback';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
+import GenderGradientBg from '../components/GenderGradientBg';
 import Icon from '../components/Icon';
 
 const {width: SW, height: SH} = Dimensions.get('window');
@@ -60,6 +62,15 @@ export default function AuthScreen({route, navigation}: Props) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalBody, setModalBody] = useState('');
+
+  const showModal = useCallback((title: string, body: string) => {
+    setModalTitle(title);
+    setModalBody(body);
+    setModalVisible(true);
+  }, []);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -74,17 +85,10 @@ export default function AuthScreen({route, navigation}: Props) {
 
   const handleForgotPassword = () => {
     if (!email.trim()) {
-      Alert.alert(
-        'Forgot Password',
-        'Please enter your email address first, then tap Forgot Password.',
-      );
+      showModal('Forgot Password', 'Please enter your email address first, then tap Forgot Password.');
       return;
     }
-    Alert.alert(
-      'Password Reset',
-      `We've sent a password reset link to ${email.trim()}. Please check your inbox.`,
-      [{text: 'OK'}],
-    );
+    showModal('Password Reset', `We've sent a password reset link to ${email.trim()}. Please check your inbox.`);
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -113,11 +117,11 @@ export default function AuthScreen({route, navigation}: Props) {
 
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showModal('Error', 'Please fill in all fields');
       return;
     }
     if (!isLogin && !name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
+      showModal('Error', 'Please enter your name');
       return;
     }
     setLoading(true);
@@ -139,6 +143,7 @@ export default function AuthScreen({route, navigation}: Props) {
 
   return (
     <View style={styles.container}>
+      <GenderGradientBg />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* ===== TOP SECTION with curved bottom ===== */}
@@ -299,6 +304,28 @@ export default function AuthScreen({route, navigation}: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Glass Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+        <View style={authModalStyles.overlay}>
+          <View style={authModalStyles.card}>
+            <BlurView
+              blurType={isDark ? 'dark' : 'light'}
+              blurAmount={40}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[authModalStyles.inner, {borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
+              <Text style={[authModalStyles.title, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{modalTitle}</Text>
+              <Text style={[authModalStyles.body, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)'}]}>{modalBody}</Text>
+              <TouchableOpacity
+                style={[authModalStyles.btn, {backgroundColor: C.accent}]}
+                onPress={() => setModalVisible(false)}>
+                <Text style={[authModalStyles.btnText, {color: C.accentText}]}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -487,5 +514,47 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.bodySmall,
     color: colors.accent,
     fontWeight: FONT_WEIGHTS.semiBold,
+  },
+});
+
+const authModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  card: {
+    width: '100%',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  inner: {
+    padding: 28,
+    borderWidth: 1,
+    borderRadius: 24,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    marginBottom: 10,
+  },
+  body: {
+    fontSize: 14,
+    fontFamily: 'Helvetica',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  btn: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  btnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
 });

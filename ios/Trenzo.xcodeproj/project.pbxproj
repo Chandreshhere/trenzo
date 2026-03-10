@@ -12,12 +12,15 @@
 		2B65C5CD3A1C43A89A1BE525 /* Poppins-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7B7CCB7D25B142CDA363DB3E /* Poppins-Medium.ttf */; };
 		3D0AF20BB3BA4475BC07F7CF /* Poppins-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D65EAEB20EA948B099623A9B /* Poppins-Regular.ttf */; };
 		3FF24309AF9E4FE28E7F683E /* Poppins-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0E7E70AB76A24B05952EC38C /* Poppins-Light.ttf */; };
+		64FEE5E598AE4603BC3B8D1E /* MeaCulpa-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8D36A2DC84AA480AA91869AB /* MeaCulpa-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		794F04103009433BA73DC47B /* Poppins-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F46A5748C3924363BFA72B46 /* Poppins-Bold.ttf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		98600D258E3227BFE7E8D514 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		A17C3CDDD36A460EB2723E8B /* Poppins-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5EFFF9A8F7734FF1BA42F793 /* Poppins-SemiBold.ttf */; };
+		ABA55A7F5AFD4CEB981921CA /* PatuaOne-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C9477A18A10C442F828EE964 /* PatuaOne-Regular.ttf */; };
 		D0A9E1DDA2234DF1B0F50A47 /* Jost-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3D71D49A3A2F487A8DD4B1ED /* Jost-Black.ttf */; };
+		DF573EF349214790B2916E3E /* Rondira-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = D8DF9366531F4BE4BEAB8281 /* Rondira-Medium.otf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,7 +37,10 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Trenzo/AppDelegate.swift; sourceTree = "<group>"; };
 		7B7CCB7D25B142CDA363DB3E /* Poppins-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Medium.ttf"; path = "../assets/fonts/Poppins-Medium.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Trenzo/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		8D36A2DC84AA480AA91869AB /* MeaCulpa-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "MeaCulpa-Regular.ttf"; path = "../assets/fonts/MeaCulpa-Regular.ttf"; sourceTree = "<group>"; };
+		C9477A18A10C442F828EE964 /* PatuaOne-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PatuaOne-Regular.ttf"; path = "../assets/fonts/PatuaOne-Regular.ttf"; sourceTree = "<group>"; };
 		D65EAEB20EA948B099623A9B /* Poppins-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Regular.ttf"; path = "../assets/fonts/Poppins-Regular.ttf"; sourceTree = "<group>"; };
+		D8DF9366531F4BE4BEAB8281 /* Rondira-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Rondira-Medium.otf"; path = "../assets/fonts/Rondira-Medium.otf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F46A5748C3924363BFA72B46 /* Poppins-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Bold.ttf"; path = "../assets/fonts/Poppins-Bold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -81,6 +87,9 @@
 				F46A5748C3924363BFA72B46 /* Poppins-Bold.ttf */,
 				5EFFF9A8F7734FF1BA42F793 /* Poppins-SemiBold.ttf */,
 				3D71D49A3A2F487A8DD4B1ED /* Jost-Black.ttf */,
+				8D36A2DC84AA480AA91869AB /* MeaCulpa-Regular.ttf */,
+				C9477A18A10C442F828EE964 /* PatuaOne-Regular.ttf */,
+				D8DF9366531F4BE4BEAB8281 /* Rondira-Medium.otf */,
 			);
 			name = Resources;
 			path = "";
@@ -196,6 +205,9 @@
 				794F04103009433BA73DC47B /* Poppins-Bold.ttf in Resources */,
 				A17C3CDDD36A460EB2723E8B /* Poppins-SemiBold.ttf in Resources */,
 				D0A9E1DDA2234DF1B0F50A47 /* Jost-Black.ttf in Resources */,
+				64FEE5E598AE4603BC3B8D1E /* MeaCulpa-Regular.ttf in Resources */,
+				ABA55A7F5AFD4CEB981921CA /* PatuaOne-Regular.ttf in Resources */,
+				DF573EF349214790B2916E3E /* Rondira-Medium.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

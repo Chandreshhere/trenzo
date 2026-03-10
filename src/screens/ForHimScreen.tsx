@@ -1,38 +1,53 @@
-import React, {useMemo} from 'react';
+import React, {useRef, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  Image,
+  Animated,
   Dimensions,
   StatusBar,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
   Platform,
-  Image,
-  FlatList,
-  ImageBackground,
 } from 'react-native';
-import {FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
+import Svg, {Defs, ClipPath, Path} from 'react-native-svg';
+import LinearGradient from 'react-native-linear-gradient';
+import {SIZES} from '../utils/theme';
 import {PRODUCTS, Product, formatPrice} from '../data/products';
-import ProductCard from '../components/ProductCard';
-import {useTheme} from '../context/ThemeContext';
 import Icon from '../components/Icon';
+import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette} from '../context/GenderPaletteContext';
+import {useTabBar} from '../context/TabBarContext';
+import GenderGradientBg from '../components/GenderGradientBg';
 
-const {width} = Dimensions.get('window');
-const CARD_GAP = 12;
-const CARD_WIDTH = (width - SIZES.screenPadding * 2 - CARD_GAP) / 2;
+const {width: W} = Dimensions.get('window');
+const PAD = SIZES.screenPadding;
+const CARD_W = (W - PAD * 2 - 12) / 2;
+const CARD_H = CARD_W * 1.35;
+const R = 18;
+const TREND_W = 150;
+
+const buildCardPath = (w: number, h: number) => {
+  const notch = 24;
+  return [
+    `M ${R} 0`, `L ${w - R} 0`, `Q ${w} 0 ${w} ${R}`,
+    `L ${w} ${h - R}`, `Q ${w} ${h} ${w - R} ${h}`,
+    `L ${notch + R} ${h}`, `Q ${notch} ${h} ${notch} ${h - R}`,
+    `L ${notch} ${h - notch + R}`, `Q ${notch} ${h - notch} ${notch - R} ${h - notch}`,
+    `L ${R} ${h - notch}`, `Q 0 ${h - notch} 0 ${h - notch - R}`,
+    `L 0 ${R}`, `Q 0 0 ${R} 0`, 'Z',
+  ].join(' ');
+};
 
 const STYLE_EDITS = [
-  {id: 'se1', title: 'Casual', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', subtitle: 'Everyday essentials'},
-  {id: 'se2', title: 'Formal', image: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400', subtitle: 'Office ready looks'},
-  {id: 'se3', title: 'Active', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400', subtitle: 'Performance wear'},
-  {id: 'se4', title: 'Street', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400', subtitle: 'Urban style'},
-  {id: 'se5', title: 'Ethnic', image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400', subtitle: 'Traditional wear'},
-];
-
-const LOOKBOOK = [
-  {id: 'lb1', title: 'The Weekend Edit', subtitle: 'Relaxed fits for lazy days', image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=600'},
-  {id: 'lb2', title: 'Office Power', subtitle: 'Dress for the role you want', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600'},
+  {label: 'Casual', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400'},
+  {label: 'Formal', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'},
+  {label: 'Active', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400'},
+  {label: 'Street', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400'},
+  {label: 'Ethnic', image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400'},
 ];
 
 interface Props {
@@ -40,12 +55,19 @@ interface Props {
 }
 
 export default function ForHimScreen({navigation}: Props) {
-  const {colors, isDark} = useTheme();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const {isDark} = useTheme();
+  const {palette: gp, activeGender} = useGenderPalette();
+  const {tabBarTranslateY} = useTabBar();
+  const accent = isDark ? '#CDF564' : gp.mid;
+  const accentText = isDark ? '#000' : '#FFF';
 
-  const allProducts = PRODUCTS.filter(
-    p => p.gender === 'men' || p.gender === 'unisex',
-  );
+  const allProducts = useMemo(() =>
+    PRODUCTS.filter(p => p.gender === 'men' || p.gender === 'unisex'),
+  []);
+
+  const editorPicks = useMemo(() => allProducts.filter(p => p.isFeatured).slice(0, 8), [allProducts]);
+  const newIn = useMemo(() => allProducts.filter(p => p.isNew).slice(0, 4), [allProducts]);
+  const topRated = useMemo(() => [...allProducts].sort((a, b) => b.rating - a.rating).slice(0, 4), [allProducts]);
 
   const categories = [
     {label: 'All', icon: 'grid'},
@@ -55,493 +77,485 @@ export default function ForHimScreen({navigation}: Props) {
     {label: 'Accessories', icon: 'watch'},
     {label: 'Shoes', icon: 'triangle'},
   ];
-
   const [activeCategory, setActiveCategory] = React.useState('All');
+  const filtered = useMemo(() =>
+    activeCategory === 'All' ? allProducts : allProducts.filter(p => p.category === activeCategory),
+  [activeCategory, allProducts]);
 
-  const filtered =
-    activeCategory === 'All'
-      ? allProducts
-      : allProducts.filter(p => p.category === activeCategory);
+  // Animations
+  const heroAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const lastScrollYRef = useRef(0);
+  const isTabBarHidden = useRef(false);
 
-  const editorPicks = allProducts.filter(p => p.isFeatured).slice(0, 8);
-  const newIn = allProducts.filter(p => p.isNew).slice(0, 6);
-  const topRated = [...allProducts].sort((a, b) => b.rating - a.rating).slice(0, 6);
+  useEffect(() => {
+    Animated.stagger(150, [
+      Animated.spring(heroAnim, {toValue: 1, friction: 10, tension: 50, useNativeDriver: true}),
+      Animated.spring(contentAnim, {toValue: 1, friction: 9, tension: 55, useNativeDriver: true}),
+    ]).start();
+  }, []);
 
-  const handleProductPress = (product: Product) => {
-    navigation.navigate('ProductDetail', {product});
-  };
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const isDown = y > lastScrollYRef.current;
+    if (isDown && y > 60 && !isTabBarHidden.current) {
+      isTabBarHidden.current = true;
+      Animated.timing(tabBarTranslateY, {toValue: 160, duration: 250, useNativeDriver: true}).start();
+    } else if (!isDown && isTabBarHidden.current) {
+      isTabBarHidden.current = false;
+      Animated.timing(tabBarTranslateY, {toValue: 0, duration: 250, useNativeDriver: true}).start();
+    }
+    lastScrollYRef.current = y;
+  }, [tabBarTranslateY]);
 
-  // --- SECTION: Hero Banner ---
-  const renderHero = () => (
-    <TouchableOpacity activeOpacity={0.9} style={styles.heroContainer}>
-      <ImageBackground
-        source={{uri: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=800'}}
-        style={styles.heroImage}
-        imageStyle={{borderRadius: 20}}>
-        <View style={styles.heroOverlay}>
-          <View style={styles.heroTagRow}>
-            <View style={styles.heroTag}>
-              <Text style={styles.heroTagText}>EXCLUSIVE</Text>
-            </View>
-          </View>
-          <View style={styles.heroBottom}>
-            <Text style={styles.heroTitle}>The Modern{'\n'}Man's Wardrobe</Text>
-            <Text style={styles.heroSubtitle}>Premium picks for every occasion</Text>
-            <View style={styles.heroCTA}>
-              <Text style={styles.heroCTAText}>Shop Collection</Text>
-              <Icon name="arrow-right" size={14} color="#FFF" />
-            </View>
-          </View>
-        </View>
-      </ImageBackground>
-    </TouchableOpacity>
-  );
+  const cardClipPath = useMemo(() => buildCardPath(CARD_W, CARD_H), []);
+  const heroParallax = scrollY.interpolate({inputRange: [-100, 0, 300], outputRange: [40, 0, -60], extrapolate: 'clamp'});
+  const heroOpacity = scrollY.interpolate({inputRange: [0, 250], outputRange: [1, 0], extrapolate: 'clamp'});
 
-  // --- SECTION: Category Chips ---
-  const renderChips = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipRow}>
-      {categories.map(cat => (
-        <TouchableOpacity
-          key={cat.label}
-          style={[
-            styles.chip,
-            activeCategory === cat.label && styles.chipActive,
-          ]}
-          onPress={() => setActiveCategory(cat.label)}
-          activeOpacity={0.7}>
-          <Icon
-            name={cat.icon}
-            size={13}
-            color={activeCategory === cat.label ? colors.accentText : colors.accentForeground}
-          />
-          <Text
-            style={[
-              styles.chipText,
-              activeCategory === cat.label && styles.chipTextActive,
-            ]}>
-            {cat.label}
-          </Text>
+  const handleProduct = (product: Product) => navigation.navigate('ProductDetail', {product});
+
+  return (
+    <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA'}}>
+      <GenderGradientBg />
+      <StatusBar barStyle="light-content" />
+
+      {/* Back + Search */}
+      <View style={s.headerBar}>
+        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Icon name="arrow-left" size={20} color="#FFF" />
         </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
-
-  // --- SECTION: Editor's Picks Horizontal ---
-  const renderEditorPicks = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>EDITOR'S CHOICE</Text>
-          <Text style={styles.sectionTitle}>Top Picks for You</Text>
-        </View>
-        <TouchableOpacity style={styles.seeAllBtn}>
-          <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
+        <TouchableOpacity style={s.backBtn} activeOpacity={0.7}>
+          <Icon name="search" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={editorPicks}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: SIZES.screenPadding}}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
-          <TouchableOpacity
-            style={styles.pickCard}
-            activeOpacity={0.85}
-            onPress={() => handleProductPress(item)}>
-            <Image source={{uri: item.images[0]}} style={styles.pickImage} />
-            {item.discount && (
-              <View style={styles.pickBadge}>
-                <Text style={styles.pickBadgeText}>{item.discount}% OFF</Text>
-              </View>
-            )}
-            <View style={styles.pickInfo}>
-              <Text style={styles.pickBrand}>{item.brand}</Text>
-              <Text style={styles.pickName} numberOfLines={1}>{item.name}</Text>
-              <View style={styles.pickPriceRow}>
-                <Text style={styles.pickPrice}>{formatPrice(item.price)}</Text>
-                {item.originalPrice && (
-                  <Text style={styles.pickOrigPrice}>{formatPrice(item.originalPrice)}</Text>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true, listener: handleScroll},
         )}
-      />
-    </View>
-  );
+        scrollEventThrottle={16}>
 
-  // --- SECTION: The Streetwear Edit (Editorial) ---
-  const renderStreetEdit = () => (
-    <View style={styles.section}>
-      <TouchableOpacity activeOpacity={0.9} style={styles.editorialCard}>
-        <ImageBackground
-          source={{uri: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800'}}
-          style={styles.editorialImage}
-          imageStyle={{borderRadius: 16}}>
-          <View style={styles.editorialOverlay}>
-            <View style={styles.editorialTagRow}>
-              <Text style={styles.editorialTag}>THE EDIT</Text>
+        {/* HERO */}
+        <Animated.View style={[s.hero, {opacity: heroAnim}]}>
+          <Animated.Image
+            source={{uri: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=800'}}
+            style={[StyleSheet.absoluteFill, {transform: [{translateY: heroParallax}]}]}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'transparent', 'rgba(0,0,0,0.55)', isDark ? '#000' : 'rgba(0,0,0,0.85)']}
+            locations={[0, 0.2, 0.6, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <Animated.View style={[s.heroContent, {opacity: heroOpacity}]}>
+            <View style={[s.accentLine, {backgroundColor: accent}]} />
+            <Text style={s.heroLabel}>EXCLUSIVE</Text>
+            <Text style={s.heroHeadline}>The Modern{'\n'}Wardrobe</Text>
+            <Text style={s.heroSubtitle}>Premium picks for every occasion</Text>
+            <TouchableOpacity
+              style={[s.heroCTA, {backgroundColor: accent}]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('CategoryDetail', {categoryType: 'New Arrivals'})}>
+              <Text style={[s.heroCTAText, {color: accentText}]}>Shop Collection</Text>
+              <Icon name="arrow-right" size={14} color={accentText} />
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+
+        {/* CATEGORY CHIPS */}
+        <Animated.View style={{
+          opacity: contentAnim,
+          transform: [{translateY: contentAnim.interpolate({inputRange: [0, 1], outputRange: [20, 0]})}],
+        }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{paddingHorizontal: PAD, paddingVertical: 16, gap: 8}}>
+            {categories.map(cat => (
+              <TouchableOpacity
+                key={cat.label}
+                style={[s.chip, activeCategory === cat.label && {backgroundColor: accent, borderColor: accent}]}
+                onPress={() => setActiveCategory(cat.label)}
+                activeOpacity={0.7}>
+                <Icon name={cat.icon} size={12} color={activeCategory === cat.label ? accentText : (isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)')} />
+                <Text style={[s.chipText, {
+                  color: activeCategory === cat.label ? accentText : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'),
+                }]}>{cat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
+
+        {/* EDITOR'S PICKS — horizontal scroll */}
+        <Animated.View style={[s.section, {
+          opacity: contentAnim,
+          transform: [{translateY: contentAnim.interpolate({inputRange: [0, 1], outputRange: [30, 0]})}],
+        }]}>
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={[s.sectionTag, {color: accent}]}>EDITOR'S CHOICE</Text>
+              <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Top Picks for You</Text>
             </View>
-            <Text style={styles.editorialTitle}>Streetwear{'\n'}Essentials</Text>
-            <Text style={styles.editorialSub}>Sneakers, hoodies & everything street</Text>
+            <TouchableOpacity style={s.seeAllBtn} onPress={() => navigation.navigate('CategoryDetail', {categoryType: 'Curated For You'})}>
+              <Text style={[s.seeAllText, {color: accent}]}>See All</Text>
+              <Icon name="chevron-right" size={13} color={accent} />
+            </TouchableOpacity>
           </View>
-        </ImageBackground>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // --- SECTION: New In - Mosaic Grid ---
-  const renderMosaic = () => {
-    const items = newIn.length >= 3 ? newIn : allProducts.slice(0, 3);
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTag}>FRESH DROPS</Text>
-            <Text style={styles.sectionTitle}>New In Store</Text>
-          </View>
-        </View>
-        <View style={styles.mosaicContainer}>
-          {/* Large card left */}
-          <TouchableOpacity
-            style={styles.mosaicLarge}
-            activeOpacity={0.85}
-            onPress={() => handleProductPress(items[0])}>
-            <ImageBackground
-              source={{uri: items[0].images[0]}}
-              style={styles.mosaicLargeImg}
-              imageStyle={{borderRadius: 14}}>
-              <View style={styles.mosaicOverlay}>
-                <Text style={styles.mosaicBrand}>{items[0].brand}</Text>
-                <Text style={styles.mosaicName} numberOfLines={2}>{items[0].name}</Text>
-                <Text style={styles.mosaicPrice}>{formatPrice(items[0].price)}</Text>
-              </View>
-            </ImageBackground>
-          </TouchableOpacity>
-          {/* Two small cards right */}
-          <View style={styles.mosaicRight}>
-            {items.slice(1, 3).map(item => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: PAD}}>
+            {editorPicks.map(item => (
               <TouchableOpacity
                 key={item.id}
-                style={styles.mosaicSmall}
+                style={[s.trendCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFF'}]}
                 activeOpacity={0.85}
-                onPress={() => handleProductPress(item)}>
-                <ImageBackground
-                  source={{uri: item.images[0]}}
-                  style={styles.mosaicSmallImg}
-                  imageStyle={{borderRadius: 14}}>
-                  <View style={styles.mosaicOverlay}>
-                    <Text style={styles.mosaicBrand}>{item.brand}</Text>
-                    <Text style={styles.mosaicName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.mosaicPrice}>{formatPrice(item.price)}</Text>
+                onPress={() => handleProduct(item)}>
+                <Image source={{uri: item.images[0]}} style={s.trendImage} />
+                {item.discount && (
+                  <View style={[s.trendBadge, {backgroundColor: '#FF453A'}]}>
+                    <Text style={{fontSize: 9, fontWeight: '800', fontFamily: 'Helvetica', color: '#FFF'}}>{item.discount}% OFF</Text>
                   </View>
-                </ImageBackground>
+                )}
+                <View style={s.trendInfo}>
+                  <Text style={[s.trendBrand, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>{item.brand}</Text>
+                  <Text style={[s.trendName, {color: isDark ? '#FFF' : '#1A1A1A'}]} numberOfLines={1}>{item.name}</Text>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4}}>
+                    <Text style={[s.trendPrice, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{formatPrice(item.price)}</Text>
+                    {item.originalPrice && (
+                      <Text style={s.trendOrigPrice}>{formatPrice(item.originalPrice)}</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
+
+        {/* EDITORIAL — Streetwear */}
+        <View style={{paddingHorizontal: PAD, marginTop: 28}}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={s.editorialCard}
+            onPress={() => navigation.navigate('Occasion', {occasionLabel: 'STREET'})}>
+            <Image
+              source={{uri: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800'}}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.75)']}
+              locations={[0.3, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={s.editorialTag}>
+              <Text style={{fontSize: 9, fontWeight: '700', fontFamily: 'Helvetica', color: '#FFF', letterSpacing: 1.5}}>THE EDIT</Text>
+            </View>
+            <View style={s.editorialBottom}>
+              <Text style={s.editorialTitle}>Streetwear{'\n'}Essentials</Text>
+              <Text style={s.editorialSub}>Sneakers, hoodies & everything street</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* NEW IN — SVG masked cards */}
+        <View style={[s.section, {marginTop: 28}]}>
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={[s.sectionTag, {color: accent}]}>FRESH DROPS</Text>
+              <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>New In Store</Text>
+            </View>
+          </View>
+          <View style={s.cardGrid}>
+            {newIn.map((product, i) => (
+              <TouchableOpacity
+                key={product.id}
+                style={{width: CARD_W, height: CARD_H, marginBottom: 14}}
+                activeOpacity={0.9}
+                onPress={() => handleProduct(product)}>
+                <Svg width={CARD_W} height={CARD_H} style={StyleSheet.absoluteFill}>
+                  <Defs>
+                    <ClipPath id={`himClip-${product.id}`}>
+                      <Path d={cardClipPath} />
+                    </ClipPath>
+                  </Defs>
+                  <Path d={cardClipPath} fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} />
+                  <Path d={cardClipPath} fill="none" stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'} strokeWidth={1} />
+                </Svg>
+                <View style={s.cardImageWrap}>
+                  <Image source={{uri: product.images[0]}} style={s.cardImage} resizeMode="cover" />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    locations={[0.4, 1]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </View>
+                <View style={[s.notchCircle, {backgroundColor: i === 0 ? accent : gp.light}]}>
+                  <Icon name="arrow-up-right" size={10} color={i === 0 ? accentText : '#FFF'} />
+                </View>
+                <View style={s.cardInfo}>
+                  <Text style={s.cardBrand}>{product.brand}</Text>
+                  <Text style={s.cardName} numberOfLines={1}>{product.name}</Text>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4}}>
+                    <Text style={s.cardPrice}>{formatPrice(product.price)}</Text>
+                    {product.originalPrice && <Text style={s.cardOrigPrice}>{formatPrice(product.originalPrice)}</Text>}
+                  </View>
+                </View>
+                {product.discount && (
+                  <View style={[s.discountBadge, {backgroundColor: accent}]}>
+                    <Text style={{fontSize: 10, fontWeight: '800', fontFamily: 'Helvetica', color: accentText}}>{product.discount}%</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
         </View>
-      </View>
-    );
-  };
 
-  // --- SECTION: Shop by Style ---
-  const renderStyleEdits = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>DISCOVER</Text>
-          <Text style={styles.sectionTitle}>Shop by Style</Text>
-        </View>
-      </View>
-      <FlatList
-        data={STYLE_EDITS}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: SIZES.screenPadding}}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
-          <TouchableOpacity style={styles.styleCard} activeOpacity={0.85}>
-            <Image source={{uri: item.image}} style={styles.styleImage} />
-            <View style={styles.styleLabelWrap}>
-              <Text style={styles.styleLabel}>{item.title}</Text>
-              <Text style={styles.styleSub}>{item.subtitle}</Text>
+        {/* SHOP BY STYLE — horizontal */}
+        <View style={[s.section, {marginTop: 8}]}>
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={[s.sectionTag, {color: accent}]}>DISCOVER</Text>
+              <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Shop by Style</Text>
             </View>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
-  );
-
-  // --- SECTION: Top Rated horizontal ---
-  const renderTopRated = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>HIGHLY RATED</Text>
-          <Text style={styles.sectionTitle}>Community Favorites</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal: PAD}}>
+            {STYLE_EDITS.map(style => (
+              <TouchableOpacity
+                key={style.label}
+                style={s.styleCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Occasion', {occasionLabel: style.label.toUpperCase()})}>
+                <Image source={{uri: style.image}} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.7)']}
+                  locations={[0.5, 1]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Text style={s.styleLabel}>{style.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-        <TouchableOpacity style={styles.seeAllBtn}>
-          <Text style={styles.seeAllText}>See All</Text>
-          <Icon name="chevron-right" size={14} color={colors.accentForeground} />
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={topRated}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: SIZES.screenPadding}}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
+
+        {/* TOP RATED — SVG masked cards */}
+        <View style={[s.section, {marginTop: 8}]}>
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={[s.sectionTag, {color: accent}]}>HIGHLY RATED</Text>
+              <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Community Favorites</Text>
+            </View>
+            <TouchableOpacity style={s.seeAllBtn} onPress={() => navigation.navigate('CategoryDetail', {categoryType: 'Bestsellers'})}>
+              <Text style={[s.seeAllText, {color: accent}]}>See All</Text>
+              <Icon name="chevron-right" size={13} color={accent} />
+            </TouchableOpacity>
+          </View>
+          <View style={s.cardGrid}>
+            {topRated.map((product, i) => (
+              <TouchableOpacity
+                key={product.id}
+                style={{width: CARD_W, height: CARD_H, marginBottom: 14}}
+                activeOpacity={0.9}
+                onPress={() => handleProduct(product)}>
+                <Svg width={CARD_W} height={CARD_H} style={StyleSheet.absoluteFill}>
+                  <Defs>
+                    <ClipPath id={`himTr-${product.id}`}>
+                      <Path d={cardClipPath} />
+                    </ClipPath>
+                  </Defs>
+                  <Path d={cardClipPath} fill={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} />
+                  <Path d={cardClipPath} fill="none" stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'} strokeWidth={1} />
+                </Svg>
+                <View style={s.cardImageWrap}>
+                  <Image source={{uri: product.images[0]}} style={s.cardImage} resizeMode="cover" />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    locations={[0.4, 1]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </View>
+                <View style={[s.notchCircle, {backgroundColor: i === 0 ? accent : gp.light}]}>
+                  <Icon name="star" size={10} color={i === 0 ? accentText : '#FFF'} />
+                </View>
+                <View style={s.cardInfo}>
+                  <Text style={s.cardBrand}>{product.brand}</Text>
+                  <Text style={s.cardName} numberOfLines={1}>{product.name}</Text>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4}}>
+                    <Text style={s.cardPrice}>{formatPrice(product.price)}</Text>
+                    <View style={s.ratingPill}>
+                      <Icon name="star" size={8} color="#F5A623" />
+                      <Text style={s.ratingText}>{product.rating}</Text>
+                      <Text style={{fontSize: 8, fontFamily: 'Helvetica', color: 'rgba(255,255,255,0.5)'}}>({product.reviews})</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* PROMO BANNER */}
+        <View style={{paddingHorizontal: PAD, marginTop: 20}}>
           <TouchableOpacity
-            style={styles.ratedCard}
-            activeOpacity={0.85}
-            onPress={() => handleProductPress(item)}>
-            <Image source={{uri: item.images[0]}} style={styles.ratedImage} />
-            <View style={styles.ratedRating}>
-              <Icon name="star" size={10} color="#F5A623" />
-              <Text style={styles.ratedRatingText}>{item.rating}</Text>
-              <Text style={styles.ratedReviews}>({item.reviews})</Text>
-            </View>
-            <View style={styles.ratedInfo}>
-              <Text style={styles.ratedBrand}>{item.brand}</Text>
-              <Text style={styles.ratedName} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.ratedPrice}>{formatPrice(item.price)}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
-  );
-
-  // --- SECTION: Lookbook (2 horizontal editorial cards) ---
-  const renderLookbook = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTag}>LOOKBOOK</Text>
-          <Text style={styles.sectionTitle}>Outfit Inspiration</Text>
-        </View>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: SIZES.screenPadding, gap: 12}}>
-        {LOOKBOOK.map(look => (
-          <TouchableOpacity key={look.id} style={styles.lookCard} activeOpacity={0.9}>
-            <ImageBackground
-              source={{uri: look.image}}
-              style={styles.lookImage}
-              imageStyle={{borderRadius: 14}}>
-              <View style={styles.lookOverlay}>
-                <Text style={styles.lookTitle}>{look.title}</Text>
-                <Text style={styles.lookSub}>{look.subtitle}</Text>
+            style={[s.promoBanner, {backgroundColor: accent}]}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('CategoryDetail', {categoryType: 'Trending'})}>
+            <View style={{flex: 1}}>
+              <Text style={{fontSize: 9, fontWeight: '700', fontFamily: 'Helvetica', color: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', letterSpacing: 2}}>MEMBERS ONLY</Text>
+              <Text style={{fontSize: 24, fontWeight: '800', fontFamily: 'Rondira-Medium', color: accentText, marginTop: 4}}>Extra 20% Off</Text>
+              <Text style={{fontSize: 12, fontFamily: 'Helvetica', color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.65)', marginTop: 4}}>On premium brands this weekend</Text>
+              <View style={[s.promoCTA, {backgroundColor: isDark ? '#000' : '#FFF'}]}>
+                <Text style={{fontSize: 12, fontWeight: '700', fontFamily: 'Helvetica', color: isDark ? '#FFF' : '#000'}}>Claim Offer</Text>
               </View>
-            </ImageBackground>
+            </View>
+            <Image
+              source={{uri: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=300'}}
+              style={s.promoImage}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
+        </View>
 
-  // --- SECTION: Promo Banner ---
-  const renderPromoBanner = () => (
-    <View style={[styles.section, {paddingHorizontal: SIZES.screenPadding}]}>
-      <View style={styles.promoBanner}>
-        <View style={styles.promoLeft}>
-          <Text style={styles.promoTag}>MEMBERS ONLY</Text>
-          <Text style={styles.promoTitle}>Extra 20% Off</Text>
-          <Text style={styles.promoSub}>On premium brands this weekend</Text>
-          <View style={styles.promoCTA}>
-            <Text style={styles.promoCTAText}>Claim Offer</Text>
+        {/* STYLE TIP */}
+        <View style={[s.tipCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+          <View style={[s.tipAccent, {backgroundColor: accent}]} />
+          <View style={{flex: 1}}>
+            <Text style={[s.tipLabel, {color: accent}]}>STYLE TIP</Text>
+            <Text style={[s.tipText, {color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'}]}>
+              A well-fitted navy blazer is the most versatile piece in your wardrobe. Pair it with chinos for work or jeans for the weekend.
+            </Text>
           </View>
         </View>
-        <Image
-          source={{uri: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=300'}}
-          style={styles.promoImage}
-        />
-      </View>
-    </View>
-  );
 
-  // --- SECTION: Filtered Product Grid ---
-  const renderProductGrid = () => (
-    <View style={styles.section}>
-      <View style={[styles.sectionHeader, {paddingHorizontal: SIZES.screenPadding}]}>
-        <View>
-          <Text style={styles.sectionTag}>EXPLORE</Text>
-          <Text style={styles.sectionTitle}>
-            {activeCategory === 'All' ? 'All Products' : activeCategory}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.productGrid}>
-        {filtered.slice(0, 12).map(product => (
-          <View key={product.id} style={styles.cardWrapper}>
-            <ProductCard product={product} style={styles.gridCard} />
+        {/* FILTERED PRODUCT GRID */}
+        <View style={[s.section, {marginTop: 8}]}>
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={[s.sectionTag, {color: accent}]}>EXPLORE</Text>
+              <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>
+                {activeCategory === 'All' ? 'All Products' : activeCategory}
+              </Text>
+            </View>
           </View>
-        ))}
-      </View>
-    </View>
-  );
+          <View style={s.cardGrid}>
+            {filtered.slice(0, 8).map(product => (
+              <TouchableOpacity
+                key={product.id}
+                style={s.gridCard}
+                activeOpacity={0.9}
+                onPress={() => handleProduct(product)}>
+                <Image source={{uri: product.images[0]}} style={s.gridImage} resizeMode="cover" />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.75)']}
+                  locations={[0.35, 1]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={s.gridRating}>
+                  <Icon name="star" size={8} color="#F5A623" />
+                  <Text style={s.gridRatingText}>{product.rating}</Text>
+                </View>
+                <View style={s.gridInfo}>
+                  <Text style={s.gridBrand}>{product.brand}</Text>
+                  <Text style={s.gridName} numberOfLines={1}>{product.name}</Text>
+                  <Text style={s.gridPrice}>{formatPrice(product.price)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        {/* CTA */}
+        <View style={{paddingHorizontal: PAD, marginTop: 20, marginBottom: 40}}>
+          <TouchableOpacity
+            style={[s.ctaBanner, {backgroundColor: accent}]}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('CategoryDetail', {categoryType: 'Trending'})}>
+            <View style={{flex: 1}}>
+              <Text style={{fontSize: 18, fontWeight: '800', fontFamily: 'Rondira-Medium', color: accentText}}>See all men's styles</Text>
+              <Text style={{fontSize: 11, fontFamily: 'Helvetica', color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', marginTop: 2}}>{allProducts.length}+ products</Text>
+            </View>
+            <View style={[s.ctaArrow, {backgroundColor: isDark ? '#000' : '#FFF'}]}>
+              <Icon name="arrow-right" size={16} color={isDark ? '#FFF' : '#000'} />
+            </View>
+          </TouchableOpacity>
+        </View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>For Him</Text>
-        <TouchableOpacity style={styles.headerAction}>
-          <Icon name="search" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        {renderHero()}
-        {renderChips()}
-        {renderEditorPicks()}
-        {renderStreetEdit()}
-        {renderMosaic()}
-        {renderStyleEdits()}
-        {renderTopRated()}
-        {renderPromoBanner()}
-        {renderLookbook()}
-        {renderProductGrid()}
         <View style={{height: 120}} />
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  // Header
-  header: {
+const s = StyleSheet.create({
+  headerBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 40,
+    left: PAD,
+    right: PAD,
+    zIndex: 20,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SIZES.screenPadding,
-    paddingTop: Platform.OS === 'ios' ? 58 : 42,
-    paddingBottom: 14,
   },
-  backButton: {
+  backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.glassLight,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: colors.textPrimary,
+  hero: {
+    height: 420,
+    overflow: 'hidden',
   },
-  headerAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.glassLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+  heroContent: {
+    position: 'absolute',
+    bottom: 30,
+    left: PAD,
+    right: PAD,
   },
-  // Hero
-  heroContainer: {
-    paddingHorizontal: SIZES.screenPadding,
-    marginBottom: 20,
+  accentLine: {
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+    marginBottom: 10,
   },
-  heroImage: {
-    width: '100%',
-    height: 320,
-  },
-  heroOverlay: {
-    flex: 1,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.50)',
-    padding: 24,
-    justifyContent: 'space-between',
-  },
-  heroTagRow: {
-    flexDirection: 'row',
-  },
-  heroTag: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  heroTagText: {
-    color: colors.accentText,
+  heroLabel: {
     fontSize: 11,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    letterSpacing: 1.2,
-  },
-  heroBottom: {},
-  heroTitle: {
-    color: '#FFF',
-    fontSize: 32,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    lineHeight: 38,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 3,
     marginBottom: 6,
   },
+  heroHeadline: {
+    fontSize: 42,
+    fontWeight: '800',
+    fontFamily: 'Rondira-Medium',
+    color: '#FFF',
+    lineHeight: 46,
+  },
   heroSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
-    fontFamily: 'Poppins',
-    marginBottom: 14,
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   heroCTA: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.accent,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 24,
     gap: 6,
+    marginTop: 14,
   },
   heroCTAText: {
-    color: colors.accentText,
     fontSize: 13,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-  },
-  // Chips
-  chipRow: {
-    paddingHorizontal: SIZES.screenPadding,
-    paddingBottom: 8,
-    gap: 8,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
   chip: {
     flexDirection: 'row',
@@ -549,48 +563,37 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     gap: 5,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: SIZES.radiusFull,
-    backgroundColor: colors.glassLight,
+    borderRadius: 100,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    borderColor: 'rgba(150,150,150,0.2)',
+    backgroundColor: 'rgba(150,150,150,0.08)',
   },
   chipText: {
-    fontSize: 13,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
-  chipTextActive: {
-    color: colors.accentText,
-  },
-  // Sections
   section: {
+    paddingHorizontal: PAD,
     marginTop: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingHorizontal: SIZES.screenPadding,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTag: {
     fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
-    letterSpacing: 1.5,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    letterSpacing: 2,
     marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
   },
   seeAllBtn: {
     flexDirection: 'row',
@@ -598,370 +601,302 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     gap: 2,
   },
   seeAllText: {
-    fontSize: 13,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
-  // Editor's Picks Cards
-  pickCard: {
-    width: 150,
+  trendCard: {
+    width: TREND_W,
     marginRight: 12,
-    backgroundColor: colors.glassLight,
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  pickImage: {
+  trendImage: {
     width: '100%',
     height: 180,
-    backgroundColor: colors.glassLight,
   },
-  pickBadge: {
+  trendBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: '#FF453A',
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 8,
   },
-  pickBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-  },
-  pickInfo: {
+  trendInfo: {
     padding: 10,
   },
-  pickBrand: {
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
+  trendBrand: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  pickName: {
+  trendName: {
     fontSize: 13,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
     marginTop: 2,
   },
-  pickPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  pickPrice: {
+  trendPrice: {
     fontSize: 14,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
   },
-  pickOrigPrice: {
-    fontSize: 11,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
+  trendOrigPrice: {
+    fontSize: 10,
+    fontFamily: 'Helvetica',
+    color: 'rgba(150,150,150,0.6)',
     textDecorationLine: 'line-through',
   },
-  // Editorial
   editorialCard: {
-    marginHorizontal: SIZES.screenPadding,
-  },
-  editorialImage: {
-    width: '100%',
     height: 220,
-  },
-  editorialOverlay: {
-    flex: 1,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.50)',
-    padding: 24,
-    justifyContent: 'flex-end',
-  },
-  editorialTagRow: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   editorialTag: {
-    color: colors.accentForeground,
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    letterSpacing: 1.5,
-    backgroundColor: colors.glassMedium,
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    overflow: 'hidden',
+  },
+  editorialBottom: {
+    position: 'absolute',
+    bottom: 18,
+    left: 18,
+    right: 18,
   },
   editorialTitle: {
-    color: '#FFF',
     fontSize: 26,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    lineHeight: 32,
+    fontWeight: '800',
+    fontFamily: 'Rondira-Medium',
+    color: '#FFF',
+    lineHeight: 30,
     marginBottom: 4,
   },
   editorialSub: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontFamily: 'Poppins',
-  },
-  // Mosaic
-  mosaicContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SIZES.screenPadding,
-    gap: 10,
-  },
-  mosaicLarge: {
-    flex: 1,
-  },
-  mosaicLargeImg: {
-    width: '100%',
-    height: 320,
-  },
-  mosaicRight: {
-    flex: 1,
-    gap: 10,
-  },
-  mosaicSmall: {
-    flex: 1,
-  },
-  mosaicSmallImg: {
-    width: '100%',
-    height: 155,
-  },
-  mosaicOverlay: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    padding: 14,
-    justifyContent: 'flex-end',
-  },
-  mosaicBrand: {
+    fontSize: 12,
+    fontFamily: 'Helvetica',
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  mosaicName: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-    marginTop: 2,
-  },
-  mosaicPrice: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    marginTop: 4,
-  },
-  // Style Cards
-  styleCard: {
-    width: 130,
-    marginRight: 12,
-    alignItems: 'center',
-  },
-  styleImage: {
-    width: 130,
-    height: 160,
-    borderRadius: 14,
-    backgroundColor: colors.glassLight,
-  },
-  styleLabelWrap: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  styleLabel: {
-    fontSize: 14,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-  },
-  styleSub: {
-    fontSize: 11,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
-    marginTop: 1,
-  },
-  // Top Rated
-  ratedCard: {
-    width: 160,
-    marginRight: 12,
-    backgroundColor: colors.glassLight,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  ratedImage: {
-    width: '100%',
-    height: 200,
-    backgroundColor: colors.glassLight,
-  },
-  ratedRating: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  ratedRatingText: {
-    fontSize: 11,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-  },
-  ratedReviews: {
-    fontSize: 10,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
-  },
-  ratedInfo: {
-    padding: 10,
-  },
-  ratedBrand: {
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-    color: colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  ratedName: {
-    fontSize: 13,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  ratedPrice: {
-    fontSize: 14,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.textPrimary,
-    marginTop: 4,
-  },
-  // Lookbook
-  lookCard: {
-    width: width * 0.7,
-  },
-  lookImage: {
-    width: '100%',
-    height: 180,
-  },
-  lookOverlay: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    padding: 20,
-    justifyContent: 'flex-end',
-  },
-  lookTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    marginBottom: 4,
-  },
-  lookSub: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontFamily: 'Poppins',
-  },
-  // Promo Banner
-  promoBanner: {
-    flexDirection: 'row',
-    backgroundColor: colors.accent,
-    borderRadius: 18,
-    overflow: 'hidden',
-    minHeight: 160,
-  },
-  promoLeft: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  promoTag: {
-    fontSize: 10,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: 'rgba(0,0,0,0.4)',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  promoTitle: {
-    fontSize: 24,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: FONTS.serif,
-    color: colors.accentText,
-    marginBottom: 4,
-  },
-  promoSub: {
-    fontSize: 12,
-    fontFamily: 'Poppins',
-    color: 'rgba(0,0,0,0.6)',
-    marginBottom: 12,
-  },
-  promoCTA: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accentText,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  promoCTAText: {
-    fontSize: 12,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-    color: colors.accentForeground,
-  },
-  promoImage: {
-    width: 130,
-    height: '100%',
-  },
-  // Product Grid
-  productGrid: {
+  cardGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: SIZES.screenPadding,
   },
-  cardWrapper: {
-    width: CARD_WIDTH,
-    marginBottom: 14,
-    borderRadius: SIZES.radiusMd,
+  cardImageWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: CARD_W,
+    height: CARD_H - 30,
+    borderTopLeftRadius: R,
+    borderTopRightRadius: R,
     overflow: 'hidden',
-    backgroundColor: colors.glassLight,
-    shadowColor: colors.accent,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  notchCircle: {
+    position: 'absolute',
+    bottom: 18,
+    left: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardInfo: {
+    position: 'absolute',
+    bottom: 40,
+    left: 12,
+    right: 12,
+  },
+  cardBrand: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.55)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  cardName: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+    marginTop: 2,
+  },
+  cardPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+  },
+  cardOrigPrice: {
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.4)',
+    textDecorationLine: 'line-through',
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  ratingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  ratingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+  },
+  styleCard: {
+    width: 130,
+    height: 170,
+    marginRight: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  styleLabel: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+  },
+  promoBanner: {
+    borderRadius: 20,
+    padding: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+    minHeight: 160,
+  },
+  promoCTA: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+  },
+  promoImage: {
+    width: 120,
+    height: 140,
+    borderRadius: 14,
+  },
+  tipCard: {
+    marginHorizontal: PAD,
+    marginTop: 28,
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+  },
+  tipAccent: {
+    width: 3,
+    borderRadius: 2,
+  },
+  tipLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  tipText: {
+    fontSize: 13,
+    fontFamily: 'Helvetica',
+    lineHeight: 19,
   },
   gridCard: {
+    width: CARD_W,
+    height: CARD_W * 1.2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  gridImage: {
     width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  gridRating: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  gridRatingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+  },
+  gridInfo: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    right: 10,
+  },
+  gridBrand: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  gridName: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+    marginTop: 2,
+  },
+  gridPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: '#FFF',
+    marginTop: 3,
+  },
+  ctaBanner: {
+    borderRadius: 20,
+    padding: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ctaArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

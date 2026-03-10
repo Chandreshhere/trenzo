@@ -1,19 +1,25 @@
-import React, {useRef, useEffect, useMemo} from 'react';
+import React, {useRef, useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Animated,
   StatusBar,
-  Alert,
+  Platform,
+  Modal,
+  TextInput,
 } from 'react-native';
-import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
+import BlurView from '../components/BlurFallback';
+import {SIZES} from '../utils/theme';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette} from '../context/GenderPaletteContext';
 import {MOCK_ORDERS, PRODUCTS, formatPrice} from '../data/products';
+import GenderGradientBg from '../components/GenderGradientBg';
 import Icon from '../components/Icon';
+
+const PAD = SIZES.screenPadding;
 
 interface Props {
   navigation: any;
@@ -21,71 +27,75 @@ interface Props {
 
 export default function ProfileScreen({navigation}: Props) {
   const {state, dispatch} = useApp();
-  const {colors, isDark, toggleTheme, statusBarStyle} = useTheme();
+  const {isDark, toggleTheme, statusBarStyle} = useTheme();
+  const {palette: gp, activeGender} = useGenderPalette();
+  const accent = isDark ? (activeGender === 'Men' ? '#CDF564' : gp.mid) : gp.mid;
+  const accentText = isDark ? '#000' : '#FFF';
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  // Modal state
+  type ModalBtn = {label: string; onPress?: () => void; destructive?: boolean};
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalBody, setModalBody] = useState('');
+  const [modalButtons, setModalButtons] = useState<ModalBtn[]>([]);
+  const [editNameVisible, setEditNameVisible] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteStep, setDeleteStep] = useState<'reason' | 'confirm'>('reason');
+
+  const showModal = useCallback((title: string, body: string, buttons: ModalBtn[]) => {
+    setModalTitle(title);
+    setModalBody(body);
+    setModalButtons(buttons);
+    setModalVisible(true);
+  }, []);
+
+  const closeModal = useCallback(() => setModalVisible(false), []);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(fadeAnim, {toValue: 1, friction: 10, tension: 50, useNativeDriver: true}).start();
   }, [fadeAnim]);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          dispatch({type: 'LOGOUT'});
-        },
-      },
+    showModal('Logout', 'Are you sure you want to logout?', [
+      {label: 'Cancel'},
+      {label: 'Logout', destructive: true, onPress: () => dispatch({type: 'LOGOUT'})},
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    setDeleteReason('');
+    setDeleteStep('reason');
+    setDeleteVisible(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setDeleteVisible(false);
+    setDeleteReason('');
+    dispatch({type: 'LOGOUT'});
+  };
+
   const handleEditProfile = () => {
-    Alert.prompt(
-      'Edit Name',
-      'Enter your new display name:',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Save',
-          onPress: (newName?: string) => {
-            if (newName && newName.trim()) {
-              dispatch({
-                type: 'LOGIN',
-                payload: {
-                  email: state.user?.email || '',
-                  name: newName.trim(),
-                },
-              });
-            }
-          },
-        },
-      ],
-      'plain-text',
-      state.user?.name || '',
-    );
+    setEditNameValue(state.user?.name || '');
+    setEditNameVisible(true);
+  };
+
+  const handleSaveEditName = () => {
+    if (editNameValue.trim()) {
+      dispatch({type: 'LOGIN', payload: {email: state.user?.email || '', name: editNameValue.trim()}});
+    }
+    setEditNameVisible(false);
   };
 
   const handleOrderPress = (orderId: string, status: string, total: number) => {
-    Alert.alert(
+    showModal(
       `Order ${orderId}`,
       `Status: ${status}\nTotal: ${formatPrice(total)}\n\nTrack your order in the app for real-time updates.`,
       [
-        {text: 'Close', style: 'cancel'},
-        {
-          text: status === 'In Transit' ? 'Track Order' : 'Reorder',
-          onPress: () => {
-            if (status !== 'In Transit') {
-              navigation.navigate('HomeTab');
-            }
-          },
-        },
+        {label: 'Close'},
+        {label: status === 'In Transit' ? 'Track Order' : 'Reorder', onPress: () => { if (status !== 'In Transit') navigation.navigate('HomeTab'); }},
       ],
     );
   };
@@ -93,102 +103,66 @@ export default function ProfileScreen({navigation}: Props) {
   const handleMenuPress = (label: string) => {
     switch (label) {
       case 'My Orders':
-        Alert.alert(
-          'My Orders',
-          `You have ${MOCK_ORDERS.length} orders.\n\n${MOCK_ORDERS.map(o => `${o.id} - ${o.status} - ${formatPrice(o.total)}`).join('\n')}`,
-          [{text: 'OK'}],
-        );
+        showModal('My Orders', `You have ${MOCK_ORDERS.length} orders.\n\n${MOCK_ORDERS.map(o => `${o.id} - ${o.status} - ${formatPrice(o.total)}`).join('\n')}`, [{label: 'OK'}]);
         break;
       case 'Wishlist': {
-        const wishlistProducts = PRODUCTS.filter(p =>
-          state.favorites.includes(p.id),
-        );
+        const wishlistProducts = PRODUCTS.filter(p => state.favorites.includes(p.id));
         if (wishlistProducts.length === 0) {
-          Alert.alert('Wishlist', 'Your wishlist is empty. Browse products and tap the heart icon to save items.', [{text: 'Browse', onPress: () => navigation.navigate('FavoritesTab')}, {text: 'OK'}]);
+          showModal('Wishlist', 'Your wishlist is empty.', [
+            {label: 'Browse', onPress: () => navigation.navigate('FavoritesTab')},
+            {label: 'OK'},
+          ]);
         } else {
-          navigation.navigate('CategoryProducts', {
-            categoryName: 'Wishlist',
-            products: wishlistProducts,
-          });
+          navigation.navigate('CategoryProducts', {categoryName: 'Wishlist', products: wishlistProducts});
         }
         break;
       }
       case 'Saved Addresses':
-        Alert.alert(
-          'Saved Addresses',
-          '123 Fashion Street, Suite 4\nNew York, NY 10001\n\n456 Style Avenue, Apt 2B\nLos Angeles, CA 90001',
-          [
-            {text: 'OK'},
-          ],
-        );
+        showModal('Saved Addresses', '123 Fashion Street, Suite 4\nNew York, NY 10001\n\n456 Style Avenue, Apt 2B\nLos Angeles, CA 90001', [{label: 'OK'}]);
         break;
       case 'Payment Methods':
-        Alert.alert(
-          'Payment Methods',
-          'Visa **** 4242\nApple Pay\nCash on Delivery',
-          [
-            {text: 'OK'},
-          ],
-        );
+        showModal('Payment Methods', 'Visa **** 4242\nApple Pay\nCash on Delivery', [{label: 'OK'}]);
         break;
       case 'Notifications':
-        Alert.alert(
-          'Notifications',
-          'All notifications are enabled.\n\nOrder updates, promotions, and new arrivals.',
-          [{text: 'OK'}],
-        );
+        showModal('Notifications', 'All notifications are enabled.\n\nOrder updates, promotions, and new arrivals.', [{label: 'OK'}]);
         break;
       case 'Settings':
-        Alert.alert(
-          'Settings',
-          'Choose an option:',
-          [
-            {text: 'Clear Cart', style: 'destructive', onPress: () => dispatch({type: 'CLEAR_CART'})},
-            {text: 'Clear Wishlist', style: 'destructive', onPress: () => {
-              state.favorites.forEach(id => dispatch({type: 'TOGGLE_FAVORITE', payload: id}));
-            }},
-            {text: 'Cancel', style: 'cancel'},
-          ],
-        );
+        showModal('Settings', 'Choose an option:', [
+          {label: 'Clear Cart', destructive: true, onPress: () => dispatch({type: 'CLEAR_CART'})},
+          {label: 'Clear Wishlist', destructive: true, onPress: () => { state.favorites.forEach(id => dispatch({type: 'TOGGLE_FAVORITE', payload: id})); }},
+          {label: 'Cancel'},
+        ]);
         break;
       case 'Help & Support':
-        Alert.alert(
-          'Help & Support',
-          'Need help? Contact us:\n\nEmail: support@trenzo.app\nPhone: 1-800-TRENZO\n\nFAQ, returns, and shipping info available in-app.',
-          [{text: 'OK'}],
-        );
-        break;
-      default:
+        showModal('Help & Support', 'Need help? Contact us:\n\nEmail: support@trenzo.app\nPhone: 1-800-TRENZO', [{label: 'OK'}]);
         break;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Delivered':
-        return colors.success;
-      case 'In Transit':
-        return colors.warning;
-      default:
-        return colors.textTertiary;
+      case 'Delivered': return '#34C759';
+      case 'In Transit': return '#FFD60A';
+      default: return isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
     }
   };
 
   if (!state.isLoggedIn) {
     return (
-      <View style={styles.notLoggedIn}>
+      <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40}}>
+        <GenderGradientBg />
         <StatusBar barStyle={statusBarStyle} />
-        <View style={styles.notLoggedInIconContainer}>
-          <Icon name="user" size={40} color={colors.textTertiary} />
+        <View style={[s.emptyIcon, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}]}>
+          <Icon name="user" size={40} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)'} />
         </View>
-        <Text style={styles.notLoggedInTitle}>Welcome to Trenzo</Text>
-        <Text style={styles.notLoggedInSubtitle}>
+        <Text style={[s.emptyTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Welcome to Trenzo</Text>
+        <Text style={[s.emptyText, {color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'}]}>
           Sign in to view your profile,{'\n'}orders, and preferences
         </Text>
         <TouchableOpacity
-          style={styles.signInButton}
+          style={[s.signInBtn, {backgroundColor: accent}]}
           onPress={() => navigation.navigate('Auth')}>
-          <Text style={styles.signInButtonText}>Sign In</Text>
+          <Text style={{fontSize: 14, fontWeight: '700', fontFamily: 'Helvetica', color: accentText}}>Sign In</Text>
         </TouchableOpacity>
       </View>
     );
@@ -205,256 +179,399 @@ export default function ProfileScreen({navigation}: Props) {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA'}}>
+      <GenderGradientBg />
       <StatusBar barStyle={statusBarStyle} />
       <Animated.ScrollView
-        style={{opacity: fadeAnim}}
+        style={{opacity: fadeAnim, transform: [{translateY: fadeAnim.interpolate({inputRange: [0, 1], outputRange: [20, 0]})}]}}
         showsVerticalScrollIndicator={false}>
+
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
+        <View style={s.header}>
+          <Text style={[s.headerTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Profile</Text>
         </View>
 
         {/* User card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
+        <View style={[s.userCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+          <View style={[s.avatar, {backgroundColor: accent}]}>
+            <Text style={[s.avatarText, {color: accentText}]}>
               {state.user?.name?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{state.user?.name}</Text>
-            <Text style={styles.userEmail}>{state.user?.email}</Text>
+          <View style={{flex: 1, marginLeft: 16}}>
+            <Text style={[s.userName, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{state.user?.name}</Text>
+            <Text style={[s.userEmail, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>{state.user?.email}</Text>
           </View>
-          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-            <Icon name="edit-2" size={16} color={colors.textPrimary} />
+          <TouchableOpacity style={[s.editBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}]} onPress={handleEditProfile}>
+            <Icon name="edit-2" size={16} color={isDark ? '#FFF' : '#1A1A1A'} />
           </TouchableOpacity>
         </View>
 
         {/* Stats */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statItem} onPress={() => handleMenuPress('My Orders')}>
-            <Text style={styles.statValue}>{MOCK_ORDERS.length}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
+        <View style={[s.statsRow, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+          <TouchableOpacity style={s.statItem} onPress={() => handleMenuPress('My Orders')}>
+            <Text style={[s.statValue, {color: accent}]}>{MOCK_ORDERS.length}</Text>
+            <Text style={[s.statLabel, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>Orders</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity style={styles.statItem} onPress={() => handleMenuPress('Wishlist')}>
-            <Text style={styles.statValue}>{state.favorites.length}</Text>
-            <Text style={styles.statLabel}>Wishlist</Text>
+          <View style={[s.statDivider, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}]} />
+          <TouchableOpacity style={s.statItem} onPress={() => handleMenuPress('Wishlist')}>
+            <Text style={[s.statValue, {color: accent}]}>{state.favorites.length}</Text>
+            <Text style={[s.statLabel, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>Wishlist</Text>
           </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity style={styles.statItem} onPress={() => handleMenuPress('Saved Addresses')}>
-            <Text style={styles.statValue}>2</Text>
-            <Text style={styles.statLabel}>Addresses</Text>
+          <View style={[s.statDivider, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}]} />
+          <TouchableOpacity style={s.statItem} onPress={() => handleMenuPress('Saved Addresses')}>
+            <Text style={[s.statValue, {color: accent}]}>2</Text>
+            <Text style={[s.statLabel, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>Addresses</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recent Orders */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Orders</Text>
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={[s.sectionTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Recent Orders</Text>
             <TouchableOpacity onPress={() => handleMenuPress('My Orders')}>
-              <Text style={styles.seeAll}>See All</Text>
+              <Text style={[s.seeAll, {color: accent}]}>See All</Text>
             </TouchableOpacity>
           </View>
           {MOCK_ORDERS.map(order => (
             <TouchableOpacity
               key={order.id}
-              style={styles.orderCard}
+              style={[s.orderCard, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}
               onPress={() => handleOrderPress(order.id, order.status, order.total)}>
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderId}>{order.id}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {backgroundColor: getStatusColor(order.status) + '20'},
-                  ]}>
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {color: getStatusColor(order.status)},
-                    ]}>
-                    {order.status}
-                  </Text>
+              <View style={s.orderHeader}>
+                <Text style={[s.orderId, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{order.id}</Text>
+                <View style={[s.statusBadge, {backgroundColor: getStatusColor(order.status) + '20'}]}>
+                  <Text style={[s.statusText, {color: getStatusColor(order.status)}]}>{order.status}</Text>
                 </View>
               </View>
-              <Text style={styles.orderDate}>{order.date}</Text>
-              <View style={styles.orderItems}>
+              <Text style={[s.orderDate, {color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.35)'}]}>{order.date}</Text>
+              <View style={{marginTop: 10}}>
                 {order.items.map((item, idx) => (
-                  <Text key={idx} style={styles.orderItemName} numberOfLines={1}>
+                  <Text key={idx} style={[s.orderItemName, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}]} numberOfLines={1}>
                     {item.product.name} x {item.quantity}
                   </Text>
                 ))}
               </View>
-              <View style={styles.orderFooter}>
-                <Text style={styles.orderTotal}>
-                  {formatPrice(order.total)}
-                </Text>
-                <Icon name="chevron-right" size={18} color={colors.accentForeground} />
+              <View style={[s.orderFooter, {borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}]}>
+                <Text style={[s.orderTotal, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{formatPrice(order.total)}</Text>
+                <Icon name="chevron-right" size={16} color={accent} />
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {/* Dark Mode Toggle */}
-          <TouchableOpacity style={styles.menuItem} onPress={toggleTheme} activeOpacity={0.7}>
-            <View style={styles.settingsRowLeft}>
-              <View style={[styles.menuIconContainer, {backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
-                <Icon name={isDark ? 'moon' : 'sun'} size={18} color={colors.accentForeground} />
+        {/* Menu */}
+        <View style={[s.menuSection, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+          {/* Dark mode toggle */}
+          <TouchableOpacity style={[s.menuItem, {borderBottomColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}]} onPress={toggleTheme} activeOpacity={0.7}>
+            <View style={s.menuLeft}>
+              <View style={[s.menuIconWrap, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}]}>
+                <Icon name={isDark ? 'moon' : 'sun'} size={16} color={isDark ? '#FFF' : '#1A1A1A'} />
               </View>
-              <Text style={styles.menuLabel}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
+              <Text style={[s.menuLabel, {color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}]}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
             </View>
-            <View style={[styles.themeToggle, isDark && styles.themeToggleActive]}>
-              <View style={[styles.themeToggleThumb, isDark && styles.themeToggleThumbActive]} />
+            <View style={[s.toggle, isDark && {backgroundColor: accent}]}>
+              <View style={[s.toggleThumb, isDark && {alignSelf: 'flex-end', backgroundColor: accentText}]} />
             </View>
           </TouchableOpacity>
 
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[s.menuItem, {borderBottomColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}]}
               onPress={() => handleMenuPress(item.label)}>
-              <View style={styles.menuIconContainer}>
-                <Icon name={item.icon} size={18} color={colors.textPrimary} />
+              <View style={[s.menuIconWrap, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}]}>
+                <Icon name={item.icon} size={16} color={isDark ? '#FFF' : '#1A1A1A'} />
               </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <View style={styles.menuRight}>
+              <Text style={[s.menuLabel, {color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}]}>{item.label}</Text>
+              <View style={s.menuRight}>
                 {item.badge && item.badge !== '0' && (
-                  <View style={styles.menuBadge}>
-                    <Text style={styles.menuBadgeText}>{item.badge}</Text>
+                  <View style={[s.menuBadge, {backgroundColor: accent + '20'}]}>
+                    <Text style={{fontSize: 10, fontWeight: '700', fontFamily: 'Helvetica', color: accent}}>{item.badge}</Text>
                   </View>
                 )}
-                <Icon name="chevron-right" size={18} color={colors.textTertiary} />
+                <Icon name="chevron-right" size={16} color={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'} />
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Icon name="log-out" size={18} color={colors.error} />
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+          <Icon name="log-out" size={16} color="#FF453A" />
+          <Text style={s.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        {/* App version */}
-        <Text style={styles.version}>Trenzo v1.0.0</Text>
+        {/* Delete Account */}
+        <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount}>
+          <Icon name="trash-2" size={14} color={isDark ? 'rgba(255,69,58,0.6)' : 'rgba(255,69,58,0.7)'} />
+          <Text style={[s.deleteText, {color: isDark ? 'rgba(255,69,58,0.6)' : 'rgba(255,69,58,0.7)'}]}>Delete Account</Text>
+        </TouchableOpacity>
+
+        <Text style={[s.version, {color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}]}>Trenzo v1.0.0</Text>
 
         <View style={{height: 100}} />
       </Animated.ScrollView>
+
+      {/* Generic Glass Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeModal}>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalCard, {overflow: 'hidden'}]}>
+            <BlurView
+              blurType={isDark ? 'dark' : 'light'}
+              blurAmount={40}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[s.modalInner, {borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
+              <Text style={[s.modalTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{modalTitle}</Text>
+              <Text style={[s.modalBody, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)'}]}>{modalBody}</Text>
+              <View style={s.modalBtnRow}>
+                {modalButtons.map((btn, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      s.modalBtn,
+                      btn.destructive
+                        ? {backgroundColor: 'rgba(255,69,58,0.15)'}
+                        : btn.onPress
+                        ? {backgroundColor: accent}
+                        : {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'},
+                    ]}
+                    onPress={() => {
+                      closeModal();
+                      btn.onPress?.();
+                    }}>
+                    <Text
+                      style={[
+                        s.modalBtnText,
+                        btn.destructive
+                          ? {color: '#FF453A'}
+                          : btn.onPress
+                          ? {color: accentText}
+                          : {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'},
+                      ]}>
+                      {btn.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal visible={deleteVisible} transparent animationType="fade" onRequestClose={() => setDeleteVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalCard, {overflow: 'hidden'}]}>
+            <BlurView
+              blurType={isDark ? 'dark' : 'light'}
+              blurAmount={40}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[s.modalInner, {borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
+              {deleteStep === 'reason' ? (
+                <>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10}}>
+                    <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,69,58,0.12)', justifyContent: 'center', alignItems: 'center'}}>
+                      <Icon name="alert-triangle" size={18} color="#FF453A" />
+                    </View>
+                    <Text style={[s.modalTitle, {color: isDark ? '#FFF' : '#1A1A1A', marginBottom: 0}]}>Delete Account</Text>
+                  </View>
+                  <Text style={[s.modalBody, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)', marginBottom: 16}]}>
+                    We're sorry to see you go. Please let us know why you'd like to delete your account.
+                  </Text>
+                  {['No longer using the app', 'Privacy concerns', 'Found a better alternative', 'Too many notifications', 'Other'].map(reason => (
+                    <TouchableOpacity
+                      key={reason}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14,
+                        borderRadius: 12, marginBottom: 8,
+                        backgroundColor: deleteReason === reason
+                          ? (isDark ? 'rgba(255,69,58,0.15)' : 'rgba(255,69,58,0.08)')
+                          : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'),
+                        borderWidth: 1,
+                        borderColor: deleteReason === reason ? 'rgba(255,69,58,0.3)' : 'transparent',
+                      }}
+                      onPress={() => setDeleteReason(reason)}
+                      activeOpacity={0.7}>
+                      <View style={{
+                        width: 20, height: 20, borderRadius: 10, borderWidth: 2, marginRight: 12,
+                        borderColor: deleteReason === reason ? '#FF453A' : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'),
+                        justifyContent: 'center', alignItems: 'center',
+                      }}>
+                        {deleteReason === reason && <View style={{width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF453A'}} />}
+                      </View>
+                      <Text style={{fontSize: 13, fontWeight: '600', fontFamily: 'Helvetica', color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'}}>{reason}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <View style={[s.modalBtnRow, {marginTop: 16}]}>
+                    <TouchableOpacity
+                      style={[s.modalBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}]}
+                      onPress={() => setDeleteVisible(false)}>
+                      <Text style={[s.modalBtnText, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.modalBtn, {backgroundColor: deleteReason ? 'rgba(255,69,58,0.15)' : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')}]}
+                      onPress={() => { if (deleteReason) setDeleteStep('confirm'); }}
+                      activeOpacity={deleteReason ? 0.7 : 1}>
+                      <Text style={[s.modalBtnText, {color: deleteReason ? '#FF453A' : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')}]}>Continue</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={{width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,69,58,0.12)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginBottom: 16}}>
+                    <Icon name="trash-2" size={22} color="#FF453A" />
+                  </View>
+                  <Text style={[s.modalTitle, {color: isDark ? '#FFF' : '#1A1A1A', textAlign: 'center'}]}>Are you sure?</Text>
+                  <Text style={[s.modalBody, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)', textAlign: 'center'}]}>
+                    This action is permanent and cannot be undone. All your data, orders, and preferences will be permanently deleted.
+                  </Text>
+                  <View style={{backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderRadius: 10, padding: 12, marginBottom: 20}}>
+                    <Text style={{fontSize: 11, fontWeight: '600', fontFamily: 'Helvetica', color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)', marginBottom: 4}}>Reason:</Text>
+                    <Text style={{fontSize: 13, fontFamily: 'Helvetica', color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'}}>{deleteReason}</Text>
+                  </View>
+                  <View style={s.modalBtnRow}>
+                    <TouchableOpacity
+                      style={[s.modalBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}]}
+                      onPress={() => setDeleteStep('reason')}>
+                      <Text style={[s.modalBtnText, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}]}>Go Back</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.modalBtn, {backgroundColor: '#FF453A'}]}
+                      onPress={handleConfirmDelete}>
+                      <Text style={[s.modalBtnText, {color: '#FFF'}]}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Name Glass Modal */}
+      <Modal visible={editNameVisible} transparent animationType="fade" onRequestClose={() => setEditNameVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalCard, {overflow: 'hidden'}]}>
+            <BlurView
+              blurType={isDark ? 'dark' : 'light'}
+              blurAmount={40}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[s.modalInner, {borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}]}>
+              <Text style={[s.modalTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Edit Name</Text>
+              <Text style={[s.modalBody, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)'}]}>Enter your new display name</Text>
+              <TextInput
+                style={[
+                  s.modalInput,
+                  {
+                    color: isDark ? '#FFF' : '#1A1A1A',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+                  },
+                ]}
+                value={editNameValue}
+                onChangeText={setEditNameValue}
+                placeholder="Your name"
+                placeholderTextColor={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'}
+                autoFocus
+                selectionColor={accent}
+              />
+              <View style={s.modalBtnRow}>
+                <TouchableOpacity
+                  style={[s.modalBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}]}
+                  onPress={() => setEditNameVisible(false)}>
+                  <Text style={[s.modalBtnText, {color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.modalBtn, {backgroundColor: accent}]}
+                  onPress={handleSaveEditName}>
+                  <Text style={[s.modalBtnText, {color: accentText}]}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+const s = StyleSheet.create({
+  header: {
+    paddingHorizontal: PAD,
+    paddingTop: Platform.OS === 'ios' ? 60 : 44,
+    paddingBottom: 8,
   },
-  // Not logged in
-  notLoggedIn: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    fontFamily: 'Rondira-Medium',
   },
-  notLoggedInIconContainer: {
+  // Empty / Not logged in
+  emptyIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
-  notLoggedInTitle: {
-    fontSize: SIZES.h3,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
     marginBottom: 8,
   },
-  notLoggedInSubtitle: {
-    fontSize: SIZES.body,
-    color: colors.textTertiary,
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Helvetica',
     textAlign: 'center',
-    lineHeight: 24,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    lineHeight: 22,
   },
-  signInButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: 16,
+  signInBtn: {
+    paddingVertical: 14,
     paddingHorizontal: 48,
-    borderRadius: SIZES.radiusFull,
-    marginTop: 32,
-  },
-  signInButtonText: {
-    color: colors.accentText,
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-  },
-  // Header
-  header: {
-    paddingHorizontal: SIZES.screenPadding,
-    paddingTop: 60,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: SIZES.h1,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+    borderRadius: 100,
+    marginTop: 28,
   },
   // User card
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: SIZES.screenPadding,
+    marginHorizontal: PAD,
     marginTop: 16,
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusLg,
+    borderRadius: 18,
     padding: 20,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 24,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.accentText,
-    fontFamily: 'Poppins',
-  },
-  userInfo: {
-    flex: 1,
-    marginLeft: 16,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
   },
   userName: {
-    fontSize: SIZES.h4,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
   userEmail: {
-    fontSize: SIZES.bodySmall,
-    color: colors.textTertiary,
+    fontSize: 13,
+    fontFamily: 'Helvetica',
     marginTop: 2,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
   },
-  editButton: {
+  editBtn: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -462,10 +579,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: SIZES.screenPadding,
-    marginTop: 16,
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusLg,
+    marginHorizontal: PAD,
+    marginTop: 12,
+    borderRadius: 18,
     padding: 20,
   },
   statItem: {
@@ -473,27 +589,23 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: SIZES.h3,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.accentForeground,
-    fontFamily: 'Poppins',
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
   },
   statLabel: {
-    fontSize: SIZES.caption,
-    color: colors.textTertiary,
+    fontSize: 11,
+    fontFamily: 'Helvetica',
     marginTop: 4,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
   },
   statDivider: {
     width: 1,
     height: 32,
-    backgroundColor: colors.glassLight,
   },
-  // Recent Orders
+  // Section
   section: {
     marginTop: 24,
-    paddingHorizontal: SIZES.screenPadding,
+    paddingHorizontal: PAD,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -502,20 +614,18 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: SIZES.h4,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
   },
   seeAll: {
-    fontSize: SIZES.bodySmall,
-    color: colors.accentForeground,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
+  // Orders
   orderCard: {
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusMd,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
   },
@@ -525,37 +635,29 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   orderId: {
-    fontSize: SIZES.bodySmall,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: SIZES.radiusFull,
+    borderRadius: 100,
   },
   statusText: {
-    fontSize: SIZES.tiny,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
   orderDate: {
-    fontSize: SIZES.caption,
-    color: colors.textTertiary,
+    fontSize: 11,
+    fontFamily: 'Helvetica',
     marginTop: 4,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
-  },
-  orderItems: {
-    marginTop: 10,
   },
   orderItemName: {
-    fontSize: SIZES.bodySmall,
-    color: colors.textSecondary,
+    fontSize: 12,
+    fontFamily: 'Helvetica',
     marginBottom: 2,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
   },
   orderFooter: {
     flexDirection: 'row',
@@ -564,115 +666,160 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
   },
   orderTotal: {
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
   },
   // Menu
   menuSection: {
     marginTop: 24,
-    marginHorizontal: SIZES.screenPadding,
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusLg,
+    marginHorizontal: PAD,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
   },
-  menuIconContainer: {
-    width: 36,
-    height: 36,
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  menuIconWrap: {
+    width: 34,
+    height: 34,
     borderRadius: 10,
-    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   menuLabel: {
     flex: 1,
-    fontSize: SIZES.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
   menuRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   menuBadge: {
-    backgroundColor: colors.accent + '1F',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: SIZES.radiusFull,
+    borderRadius: 100,
     marginRight: 8,
   },
-  menuBadgeText: {
-    fontSize: SIZES.tiny,
-    color: colors.accentForeground,
-    fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
-  },
-  // Settings row (for theme toggle)
-  settingsRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  themeToggle: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.glassMedium,
+  // Toggle
+  toggle: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(150,150,150,0.2)',
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  themeToggleActive: {
-    backgroundColor: colors.accent,
-  },
-  themeToggleThumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.textPrimary,
-  },
-  themeToggleThumbActive: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.accentText,
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
   },
   // Logout
-  logoutButton: {
+  logoutBtn: {
     flexDirection: 'row',
-    marginHorizontal: SIZES.screenPadding,
+    marginHorizontal: PAD,
     marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: SIZES.radiusFull,
+    paddingVertical: 14,
+    borderRadius: 100,
     borderWidth: 1.5,
-    borderColor: colors.error,
+    borderColor: '#FF453A',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   logoutText: {
-    fontSize: SIZES.body,
-    color: colors.error,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
+    fontSize: 14,
+    color: '#FF453A',
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: PAD,
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  deleteText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
   version: {
     textAlign: 'center',
     marginTop: 20,
-    fontSize: SIZES.caption,
-    color: colors.textTertiary,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+  },
+  // Glass Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: 24,
+  },
+  modalInner: {
+    padding: 28,
+    borderWidth: 1,
+    borderRadius: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    marginBottom: 10,
+  },
+  modalBody: {
+    fontSize: 14,
+    fontFamily: 'Helvetica',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  modalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+  },
+  modalInput: {
+    height: 48,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontFamily: 'Helvetica',
+    borderWidth: 1,
+    marginBottom: 20,
   },
 });

@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useMemo} from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,120 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Animated,
+  Animated as RNAnimated,
   Dimensions,
   StatusBar,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
-import ReAnimated, {FadeInUp, FadeInDown} from 'react-native-reanimated';
-import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
-import {Product, formatPrice} from '../data/products';
+import ReAnimated, {
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
+import {
+  GestureDetector,
+  Gesture,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import {COLORS, FONTS, FONT_WEIGHTS, SIZES} from '../utils/theme';
+import {Product, PRODUCTS, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette} from '../context/GenderPaletteContext';
+import GenderGradientBg from '../components/GenderGradientBg';
+import BlurView from '../components/BlurFallback';
 import Icon from '../components/Icon';
 
 const {width} = Dimensions.get('window');
+const IMG_H = width * 1.1;
 
+// ─── Zoomable Image Component ───
+function ZoomableImage({uri, w, h}: {uri: string; w: number; h: number}) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate(e => {
+      scale.value = savedScale.value * e.scale;
+    })
+    .onEnd(() => {
+      if (scale.value < 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else if (scale.value > 3) {
+        scale.value = withSpring(3);
+        savedScale.value = 3;
+      } else {
+        savedScale.value = scale.value;
+      }
+    });
+
+  const pan = Gesture.Pan()
+    .onUpdate(e => {
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + e.translationX;
+        translateY.value = savedTranslateY.value + e.translationY;
+      }
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+      if (scale.value <= 1) {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    });
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onStart(() => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        scale.value = withSpring(2.5);
+        savedScale.value = 2.5;
+      }
+    });
+
+  const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      {translateX: translateX.value},
+      {translateY: translateY.value},
+      {scale: scale.value},
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={composed}>
+      <ReAnimated.View style={[{width: w, height: h, overflow: 'hidden'}, animStyle]}>
+        <Image source={{uri}} style={{width: w, height: h}} resizeMode="cover" />
+      </ReAnimated.View>
+    </GestureDetector>
+  );
+}
+
+// ─── Main Screen ───
 interface Props {
   route: any;
   navigation: any;
@@ -28,57 +129,31 @@ export default function ProductDetailScreen({route, navigation}: Props) {
   const {product} = route.params as {product: Product};
   const {dispatch, state} = useApp();
   const {colors, isDark} = useTheme();
+  const {palette: gp, activeGender} = useGenderPalette();
+  const accent = isDark ? (activeGender === 'Men' ? '#CDF564' : gp.mid) : gp.mid;
+  const accentText = isDark ? '#000' : '#FFF';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
+  const scaleAnim = useRef(new RNAnimated.Value(1)).current;
   const isFavorite = state.favorites.includes(product.id);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim]);
+  // Similar products: same category, different product
+  const similarProducts = useMemo(() =>
+    PRODUCTS.filter(p => p.id !== product.id && p.category === product.category).slice(0, 10),
+    [product.id, product.category],
+  );
 
   const handleAddToCart = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 3,
-        tension: 80,
-        useNativeDriver: true,
-      }),
+    RNAnimated.sequence([
+      RNAnimated.timing(scaleAnim, {toValue: 0.9, duration: 100, useNativeDriver: true}),
+      RNAnimated.spring(scaleAnim, {toValue: 1, friction: 3, tension: 80, useNativeDriver: true}),
     ]).start();
-
-    dispatch({
-      type: 'ADD_TO_CART',
-      payload: {
-        product,
-        quantity: 1,
-        selectedSize,
-        selectedColor,
-      },
-    });
+    dispatch({type: 'ADD_TO_CART', payload: {product, quantity: 1, selectedSize, selectedColor}});
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
@@ -87,181 +162,206 @@ export default function ProductDetailScreen({route, navigation}: Props) {
     dispatch({type: 'TOGGLE_FAVORITE', payload: product.id});
   };
 
+  const handleImageScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setCurrentImageIndex(idx);
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <GenderGradientBg />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.topButton}
-          onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.topButton}
-          onPress={handleToggleFavorite}>
-          <Icon
-            name={isFavorite ? 'heart' : 'heart'}
-            size={22}
-            color={isFavorite ? '#FF4757' : colors.textSecondary}
-            family={isFavorite ? 'ionicons' : 'feather'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        <View style={styles.imageSection}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={e => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / width);
-              setCurrentImageIndex(idx);
-            }}>
-            {product.images.map((image, index) => (
-              <Image
-                key={index}
-                source={{uri: image}}
-                style={styles.productImage}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-          <View style={styles.imageDots}>
-            {product.images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.imageDot,
-                  currentImageIndex === index && styles.imageDotActive,
-                ]}
-              />
-            ))}
-          </View>
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.topButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topButton} onPress={handleToggleFavorite}>
+            <Icon
+              name="heart"
+              size={22}
+              color={isFavorite ? '#FF4757' : colors.textSecondary}
+              family={isFavorite ? 'ionicons' : 'feather'}
+            />
+          </TouchableOpacity>
         </View>
 
-        <ReAnimated.View
-          entering={FadeInUp.delay(150).duration(450).springify()}
-          style={styles.infoContainer}>
-          <View style={styles.brandRow}>
-            <Text style={styles.brand}>{product.brand}</Text>
-            <View style={styles.ratingContainer}>
-              <Icon name="star" size={14} color="#F5A623" family="ionicons" />
-              <Text style={styles.rating}>{product.rating}</Text>
-              <Text style={styles.reviews}>({product.reviews} reviews)</Text>
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          {/* Image Carousel — swipable + pinch-to-zoom */}
+          <View style={styles.imageSection}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleImageScroll}
+              scrollEventThrottle={16}>
+              {product.images.map((image, index) => (
+                <ZoomableImage key={index} uri={image} w={width} h={IMG_H} />
+              ))}
+            </ScrollView>
+            <View style={styles.imageDots}>
+              {product.images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.imageDot,
+                    currentImageIndex === index && [styles.imageDotActive, {backgroundColor: accent}],
+                  ]}
+                />
+              ))}
             </View>
           </View>
 
-          <Text style={styles.productName}>{product.name}</Text>
+          {/* Product Info */}
+          <ReAnimated.View
+            entering={FadeInUp.delay(150).duration(450).springify()}
+            style={styles.infoContainer}>
+            <View style={styles.brandRow}>
+              <Text style={styles.brand}>{product.brand}</Text>
+              <View style={styles.ratingContainer}>
+                <Icon name="star" size={14} color="#F5A623" family="ionicons" />
+                <Text style={styles.rating}>{product.rating}</Text>
+                <Text style={styles.reviews}>({product.reviews} reviews)</Text>
+              </View>
+            </View>
 
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>{formatPrice(product.price)}</Text>
-            {product.originalPrice && (
-              <>
-                <Text style={styles.originalPrice}>
-                  {formatPrice(product.originalPrice)}
-                </Text>
-                <View style={styles.saveBadge}>
-                  <Text style={styles.saveText}>
-                    SAVE {formatPrice(product.originalPrice - product.price)}
+            <Text style={styles.productName}>{product.name}</Text>
+
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>{formatPrice(product.price)}</Text>
+              {product.originalPrice && (
+                <>
+                  <Text style={styles.originalPrice}>{formatPrice(product.originalPrice)}</Text>
+                  <View style={[styles.saveBadge, {backgroundColor: accent}]}>
+                    <Text style={[styles.saveText, {color: accentText}]}>
+                      SAVE {formatPrice(product.originalPrice - product.price)}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* Delivery info */}
+            <View style={styles.deliveryRow}>
+              <Icon name="zap" size={16} color={accent} />
+              <Text style={styles.deliveryText}>Express delivery in 30 min</Text>
+            </View>
+
+            <Text style={styles.descriptionTitle}>Description</Text>
+            <Text style={styles.description}>{product.description}</Text>
+
+            <Text style={styles.optionTitle}>Size</Text>
+            <View style={styles.optionsRow}>
+              {product.sizes.map(size => (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.sizeButton,
+                    selectedSize === size && [styles.sizeButtonActive, {borderColor: accent, backgroundColor: accent}],
+                  ]}
+                  onPress={() => setSelectedSize(size)}>
+                  <Text style={[styles.sizeText, selectedSize === size && {color: accentText}]}>
+                    {size}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.optionTitle}>Color</Text>
+            <View style={styles.optionsRow}>
+              {product.colors.map(color => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorButton,
+                    {backgroundColor: color},
+                    selectedColor === color && [styles.colorButtonActive, {borderColor: accent}],
+                  ]}
+                  onPress={() => setSelectedColor(color)}>
+                  {selectedColor === color && (
+                    <Icon name="check" size={14} color={colors.textPrimary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>Category</Text>
+                <Text style={styles.metaValue}>{product.category}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>Type</Text>
+                <Text style={styles.metaValue}>{product.subcategory}</Text>
+              </View>
+            </View>
+          </ReAnimated.View>
+
+          {/* Similar Products Carousel */}
+          {similarProducts.length > 0 && (
+            <View style={styles.similarSection}>
+              <Text style={styles.similarTitle}>You May Also Like</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{paddingHorizontal: SIZES.screenPadding, gap: 12}}>
+                {similarProducts.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.similarCard}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.push('ProductDetail', {product: item})}>
+                    <Image source={{uri: item.images[0]}} style={styles.similarImage} resizeMode="cover" />
+                    <View style={styles.similarInfo}>
+                      <Text style={styles.similarBrand}>{item.brand}</Text>
+                      <Text style={styles.similarName} numberOfLines={1}>{item.name}</Text>
+                      <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                        <Text style={styles.similarPrice}>{formatPrice(item.price)}</Text>
+                        {item.originalPrice && (
+                          <Text style={styles.similarOldPrice}>{formatPrice(item.originalPrice)}</Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={{height: 120}} />
+        </ScrollView>
+
+        {/* Bottom Bar */}
+        <View style={styles.bottomBar}>
+          <BlurView
+            blurType={isDark ? 'dark' : 'light'}
+            blurAmount={25}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.bottomBarInner}>
+            <View style={styles.bottomPriceSection}>
+              <Text style={styles.bottomPriceLabel}>Total Price</Text>
+              <Text style={styles.bottomPrice}>{formatPrice(product.price)}</Text>
+            </View>
+            <RNAnimated.View style={{transform: [{scale: scaleAnim}], flex: 1}}>
+              <TouchableOpacity
+                style={[styles.addToCartButton, {backgroundColor: accent}, addedToCart && styles.addedButton]}
+                onPress={handleAddToCart}
+                activeOpacity={0.8}>
+                <View style={styles.addedRow}>
+                  <Icon name={addedToCart ? 'check' : 'shopping-bag'} size={18} color={accentText} />
+                  <Text style={[styles.addToCartText, {color: accentText}]}>
+                    {addedToCart ? ' Added to Cart' : ' Add to Cart'}
                   </Text>
                 </View>
-              </>
-            )}
-          </View>
-
-          {/* Delivery info */}
-          <View style={styles.deliveryRow}>
-            <Icon name="zap" size={16} color={colors.accentForeground} />
-            <Text style={styles.deliveryText}>Express delivery in 30 min</Text>
-          </View>
-
-          <Text style={styles.descriptionTitle}>Description</Text>
-          <Text style={styles.description}>{product.description}</Text>
-
-          <Text style={styles.optionTitle}>Size</Text>
-          <View style={styles.optionsRow}>
-            {product.sizes.map(size => (
-              <TouchableOpacity
-                key={size}
-                style={[
-                  styles.sizeButton,
-                  selectedSize === size && styles.sizeButtonActive,
-                ]}
-                onPress={() => setSelectedSize(size)}>
-                <Text
-                  style={[
-                    styles.sizeText,
-                    selectedSize === size && styles.sizeTextActive,
-                  ]}>
-                  {size}
-                </Text>
               </TouchableOpacity>
-            ))}
+            </RNAnimated.View>
           </View>
-
-          <Text style={styles.optionTitle}>Color</Text>
-          <View style={styles.optionsRow}>
-            {product.colors.map(color => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorButton,
-                  {backgroundColor: color},
-                  selectedColor === color && styles.colorButtonActive,
-                ]}
-                onPress={() => setSelectedColor(color)}>
-                {selectedColor === color && (
-                  <Icon name="check" size={14} color={colors.textPrimary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Category</Text>
-              <Text style={styles.metaValue}>{product.category}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Type</Text>
-              <Text style={styles.metaValue}>{product.subcategory}</Text>
-            </View>
-          </View>
-        </ReAnimated.View>
-
-        <View style={{height: 120}} />
-      </ScrollView>
-
-      <View style={styles.bottomBar}>
-        <View style={styles.bottomPriceSection}>
-          <Text style={styles.bottomPriceLabel}>Total Price</Text>
-          <Text style={styles.bottomPrice}>{formatPrice(product.price)}</Text>
         </View>
-        <Animated.View style={{transform: [{scale: scaleAnim}], flex: 1}}>
-          <TouchableOpacity
-            style={[
-              styles.addToCartButton,
-              addedToCart && styles.addedButton,
-            ]}
-            onPress={handleAddToCart}
-            activeOpacity={0.8}>
-            {addedToCart ? (
-              <View style={styles.addedRow}>
-                <Icon name="check" size={18} color={colors.accentText} />
-                <Text style={styles.addToCartText}> Added to Cart</Text>
-              </View>
-            ) : (
-              <View style={styles.addedRow}>
-                <Icon name="shopping-bag" size={18} color={colors.accentText} />
-                <Text style={styles.addToCartText}> Add to Cart</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
       </View>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -289,12 +389,8 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   imageSection: {
-    height: width * 1.1,
+    height: IMG_H,
     backgroundColor: colors.glassLight,
-  },
-  productImage: {
-    width,
-    height: width * 1.1,
   },
   imageDots: {
     position: 'absolute',
@@ -310,7 +406,6 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginHorizontal: 4,
   },
   imageDotActive: {
-    backgroundColor: colors.accent,
     width: 24,
   },
   infoContainer: {
@@ -332,7 +427,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontWeight: FONT_WEIGHTS.medium,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -343,16 +438,16 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.bodySmall,
     color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   reviews: {
     fontSize: SIZES.caption,
     color: colors.textTertiary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   productName: {
     fontSize: SIZES.h2,
-    fontFamily: FONTS.serif,
+    fontFamily: 'Rondira-Medium',
     fontWeight: FONT_WEIGHTS.bold,
     color: colors.textPrimary,
     marginTop: 8,
@@ -366,17 +461,16 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.h3,
     fontWeight: FONT_WEIGHTS.bold,
     color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   originalPrice: {
     fontSize: SIZES.body,
     color: colors.textTertiary,
     marginLeft: 10,
     textDecorationLine: 'line-through',
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   saveBadge: {
-    backgroundColor: colors.accent,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -384,9 +478,8 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   saveText: {
     fontSize: SIZES.tiny,
-    color: colors.accentText,
     fontWeight: FONT_WEIGHTS.bold,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   deliveryRow: {
     flexDirection: 'row',
@@ -402,11 +495,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.bodySmall,
     color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   descriptionTitle: {
     fontSize: SIZES.body,
-    fontFamily: FONTS.serif,
+    fontFamily: 'Rondira-Medium',
     fontWeight: FONT_WEIGHTS.semiBold,
     color: colors.textPrimary,
     marginTop: 24,
@@ -417,11 +510,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     color: colors.textTertiary,
     lineHeight: 22,
     fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   optionTitle: {
     fontSize: SIZES.body,
-    fontFamily: FONTS.serif,
+    fontFamily: 'Rondira-Medium',
     fontWeight: FONT_WEIGHTS.semiBold,
     color: colors.textPrimary,
     marginTop: 24,
@@ -440,18 +533,12 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderColor: colors.glassLight,
     backgroundColor: colors.glassLight,
   },
-  sizeButtonActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
+  sizeButtonActive: {},
   sizeText: {
     fontSize: SIZES.bodySmall,
     fontWeight: FONT_WEIGHTS.medium,
     color: colors.textPrimary,
-    fontFamily: 'Poppins',
-  },
-  sizeTextActive: {
-    color: colors.accentText,
+    fontFamily: 'Helvetica',
   },
   colorButton: {
     width: 36,
@@ -463,7 +550,6 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderColor: 'transparent',
   },
   colorButtonActive: {
-    borderColor: colors.accent,
     borderWidth: 3,
   },
   metaRow: {
@@ -476,28 +562,88 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.caption,
     color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   metaValue: {
     fontSize: SIZES.bodySmall,
     color: colors.textPrimary,
     fontWeight: FONT_WEIGHTS.medium,
     marginTop: 2,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
+  // Similar Products
+  similarSection: {
+    marginTop: 32,
+    paddingBottom: 8,
+  },
+  similarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
+    color: colors.textPrimary,
+    marginBottom: 16,
+    paddingHorizontal: SIZES.screenPadding,
+  },
+  similarCard: {
+    width: 150,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+  },
+  similarImage: {
+    width: 150,
+    height: 180,
+  },
+  similarInfo: {
+    padding: 10,
+  },
+  similarBrand: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  similarName: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
+    color: colors.textPrimary,
+    marginTop: 3,
+  },
+  similarPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
+    color: colors.textPrimary,
+    marginTop: 4,
+  },
+  similarOldPrice: {
+    fontSize: 11,
+    fontFamily: 'Helvetica',
+    color: colors.textTertiary,
+    textDecorationLine: 'line-through',
+    marginTop: 4,
+  },
+  // Bottom bar
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    borderTopLeftRadius: SIZES.radiusXl,
+    borderTopRightRadius: SIZES.radiusXl,
+    overflow: 'hidden',
+  },
+  bottomBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.glassLight,
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 34,
-    borderTopLeftRadius: SIZES.radiusXl,
-    borderTopRightRadius: SIZES.radiusXl,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
   },
   bottomPriceSection: {
     marginRight: 20,
@@ -506,16 +652,15 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: SIZES.caption,
     color: colors.textTertiary,
     fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   bottomPrice: {
     fontSize: SIZES.h4,
     fontWeight: FONT_WEIGHTS.bold,
     color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
   addToCartButton: {
-    backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: SIZES.radiusFull,
     alignItems: 'center',
@@ -529,9 +674,8 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   addToCartText: {
-    color: colors.accentText,
     fontSize: SIZES.body,
     fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
+    fontFamily: 'Helvetica',
   },
 });

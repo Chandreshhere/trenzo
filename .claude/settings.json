@@ -7,7 +7,21 @@
       "WebFetch(domain:knotnow.co)",
       "WebFetch(domain:play.google.com)",
       "WebFetch(domain:cdn.brandfetch.io)",
-      "WebFetch(domain:pngimg.com)"
+      "WebFetch(domain:pngimg.com)",
+      "Bash(npx pod-install)",
+      "Bash(npm ls @react-native-community/blur)",
+      "WebFetch(domain:fontesk.com)",
+      "Bash(node -e \"console.log\\(require\\(''@shopify/react-native-skia/package.json''\\).version\\)\")",
+      "Bash(npm uninstall react-native-sensors)",
+      "Bash(keytool -genkeypair -v -storetype PKCS12 -keystore trenzo-release.keystore -alias trenzo-key -keyalg RSA -keysize 2048 -validity 10000 -storepass trenzo123 -keypass trenzo123 -dname \"CN=Trenzo, OU=Mobile, O=Trenzo, L=Unknown, ST=Unknown, C=US\")",
+      "Bash(adb install -r /Users/moon/Documents/trenzo/trenzo/android/app/build/outputs/apk/release/app-release.apk)",
+      "Bash(adb logcat -c)",
+      "Bash(adb logcat -d)",
+      "Bash(adb logcat -d -v brief)",
+      "Bash(adb reverse tcp:8081 tcp:8081)"
+    ],
+    "additionalDirectories": [
+      "/Users/moon/Documents/trenzo/trenzo/node_modules/react-native-vector-icons/Fonts"
     ]
   }
 }

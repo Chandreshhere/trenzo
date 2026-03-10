@@ -4,9 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Image,
   Animated,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product, PRODUCTS, formatPrice} from '../data/products';
@@ -24,7 +26,7 @@ interface Props {
   allProducts?: Product[];
 }
 
-export default function ProductCard({product, onPress, style, compact, allProducts}: Props) {
+function ProductCard({product, onPress, style, compact, allProducts}: Props) {
   const {state, dispatch} = useApp();
   const {colors, isDark} = useTheme();
   const {activeGender, palette: gp} = useGenderPalette();
@@ -45,8 +47,13 @@ export default function ProductCard({product, onPress, style, compact, allProduc
   const cartItem = state.cart.find(i => i.product.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
 
-  // Entrance animation
+  // Entrance animation — skip on Android to reduce lag
   useEffect(() => {
+    if (Platform.OS === 'android') {
+      entranceOpacity.setValue(1);
+      entranceScale.setValue(1);
+      return;
+    }
     Animated.parallel([
       Animated.timing(entranceOpacity, {
         toValue: 1,
@@ -105,24 +112,22 @@ export default function ProductCard({product, onPress, style, compact, allProduc
     }
   }, [product, openProduct, allProducts]);
 
-  // Press in: scale down with spring
+  // Press in: scale down with spring (simpler on Android)
   const onPressIn = () => {
-    Animated.spring(pressScale, {
-      toValue: 0.95,
-      friction: 8,
-      tension: 200,
-      useNativeDriver: true,
-    }).start();
+    if (Platform.OS === 'android') {
+      Animated.timing(pressScale, {toValue: 0.97, duration: 80, useNativeDriver: true}).start();
+    } else {
+      Animated.spring(pressScale, {toValue: 0.95, friction: 8, tension: 200, useNativeDriver: true}).start();
+    }
   };
 
   // Press out: scale back to 1
   const onPressOut = () => {
-    Animated.spring(pressScale, {
-      toValue: 1,
-      friction: 6,
-      tension: 150,
-      useNativeDriver: true,
-    }).start();
+    if (Platform.OS === 'android') {
+      Animated.timing(pressScale, {toValue: 1, duration: 100, useNativeDriver: true}).start();
+    } else {
+      Animated.spring(pressScale, {toValue: 1, friction: 6, tension: 150, useNativeDriver: true}).start();
+    }
   };
 
   // Combined scale = press * entrance
@@ -138,23 +143,20 @@ export default function ProductCard({product, onPress, style, compact, allProduc
           transform: [{scale: combinedScale}],
         },
       ]}>
-      <TouchableOpacity
+      <Pressable
         onPress={handlePress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        activeOpacity={1}>
+        android_ripple={Platform.OS === 'android' ? {color: 'rgba(0,0,0,0.08)', borderless: false} : undefined}>
         <View ref={imageRef} collapsable={false} style={styles.imageContainer}>
           <Image
             source={{uri: product.images[0]}}
             style={styles.image}
             resizeMode="cover"
+            {...(Platform.OS === 'android' ? {fadeDuration: 0} : {})}
           />
           {/* Badges */}
-          {product.discount ? (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>{product.discount}% OFF</Text>
-            </View>
-          ) : product.isNew ? (
+          {product.isNew ? (
             <View style={styles.newBadge}>
               <Text style={styles.newBadgeText}>NEW</Text>
             </View>
@@ -177,7 +179,7 @@ export default function ProductCard({product, onPress, style, compact, allProduc
             <Text style={styles.deliveryBadgeText}>30 min</Text>
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={styles.info}>
         <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
@@ -229,12 +231,14 @@ export default function ProductCard({product, onPress, style, compact, allProduc
   );
 }
 
+export default React.memo(ProductCard);
+
 const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleSheet.create({
   container: {
-    backgroundColor: gp.lightest + '15',
+    backgroundColor: isDark ? gp.lightest + '15' : '#FFFFFF',
     borderRadius: SIZES.radiusLg,
     overflow: 'hidden',
-    ...(isDark ? {} : {shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1}),
+    ...(isDark ? {} : {shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2}),
   },
   imageContainer: {
     aspectRatio: 0.9,
@@ -311,7 +315,7 @@ const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleS
   },
   brand: {
     fontSize: 10,
-    color: gp.light,
+    color: isDark ? gp.light : 'rgba(0,0,0,0.5)',
     fontFamily: FONTS.sans,
     fontWeight: FONT_WEIGHTS.medium,
     textTransform: 'uppercase',
@@ -319,7 +323,7 @@ const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleS
   },
   name: {
     fontSize: SIZES.bodySmall,
-    color: gp.lightest,
+    color: isDark ? gp.lightest : '#1A1A1A',
     fontFamily: FONTS.serif,
     fontWeight: FONT_WEIGHTS.semiBold,
     marginTop: 2,
@@ -332,13 +336,13 @@ const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleS
   },
   price: {
     fontSize: SIZES.body,
-    color: gp.lightest,
+    color: isDark ? gp.lightest : '#1A1A1A',
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sans,
   },
   originalPrice: {
     fontSize: SIZES.caption,
-    color: gp.light,
+    color: isDark ? gp.light : 'rgba(0,0,0,0.4)',
     textDecorationLine: 'line-through',
     fontFamily: FONTS.sans,
   },
@@ -355,13 +359,13 @@ const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleS
   },
   ratingText: {
     fontSize: 11,
-    color: gp.light,
+    color: isDark ? gp.light : 'rgba(0,0,0,0.6)',
     fontWeight: FONT_WEIGHTS.semiBold,
     fontFamily: FONTS.sans,
   },
   reviewCount: {
     fontSize: 10,
-    color: gp.light,
+    color: isDark ? gp.light : 'rgba(0,0,0,0.45)',
     fontFamily: FONTS.sans,
   },
   addButton: {
@@ -386,7 +390,7 @@ const createStyles = (colors: any, isDark: boolean, gp: GenderPalette) => StyleS
     alignItems: 'center',
   },
   stepperQty: {
-    color: gp.lightest,
+    color: isDark ? gp.lightest : '#FFFFFF',
     fontSize: 13,
     fontWeight: FONT_WEIGHTS.bold,
     fontFamily: FONTS.sans,

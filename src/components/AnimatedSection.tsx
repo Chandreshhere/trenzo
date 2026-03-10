@@ -1,5 +1,5 @@
 import React, {useCallback} from 'react';
-import {LayoutChangeEvent, ViewStyle, StyleProp, Dimensions} from 'react-native';
+import {LayoutChangeEvent, ViewStyle, StyleProp, Dimensions, Platform} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -67,7 +67,8 @@ export default function AnimatedSection({
     };
   });
 
-  if (disabled) {
+  // Skip animated sections on Android for performance — they cause frame drops
+  if (disabled || Platform.OS === 'android') {
     return <Animated.View style={style}>{children}</Animated.View>;
   }
 

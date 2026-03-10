@@ -68,13 +68,13 @@ export default function SplashScreen({onFinish}: Props) {
 
   return (
     <Animated.View style={[styles.container, {opacity: bgOpacity}]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D2440" />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <LinearGradient
-        colors={['#0D2440', '#1A0B12', '#732C3F']}
-        locations={[0, 0.55, 1]}
+        colors={['#0D0033', '#000000', '#1A0B12']}
+        locations={[0, 0.5, 1]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
-        style={styles.gradient}
+        style={StyleSheet.absoluteFill}
       />
       <Animated.View style={[styles.logoWrap, {
         opacity: logoOpacity,
@@ -97,9 +97,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  gradient: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
   logoWrap: {
     alignItems: 'center',

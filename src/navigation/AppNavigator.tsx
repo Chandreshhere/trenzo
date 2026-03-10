@@ -15,6 +15,8 @@ import AuthScreen from '../screens/AuthScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import ForHerScreen from '../screens/ForHerScreen';
 import ForHimScreen from '../screens/ForHimScreen';
+import OccasionScreen from '../screens/OccasionScreen';
+import CategoryDetailScreen from '../screens/CategoryDetailScreen';
 import CustomTabBar from '../components/CustomTabBar';
 
 const Stack = createNativeStackNavigator();
@@ -28,9 +30,9 @@ function HomeTabs() {
       screenOptions={{
         headerShown: false,
       }}>
+      <Tab.Screen name="HomeTab" component={HomeScreen} />
       <Tab.Screen name="CategoriesTab" component={CategoriesScreen} />
       <Tab.Screen name="FavoritesTab" component={FavoritesScreen} />
-      <Tab.Screen name="HomeTab" component={HomeScreen} />
       <Tab.Screen name="CartTab" component={CartScreen} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} />
     </Tab.Navigator>
@@ -78,6 +80,8 @@ export default function AppNavigator() {
           component={ForHimScreen}
           options={{contentStyle: {backgroundColor: colors.background}}}
         />
+        <Stack.Screen name="Occasion" component={OccasionScreen} />
+        <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

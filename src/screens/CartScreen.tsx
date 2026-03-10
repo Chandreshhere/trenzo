@@ -3,36 +3,38 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Image,
   Animated,
   StatusBar,
+  Platform,
 } from 'react-native';
-import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
+import {SIZES} from '../utils/theme';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
+import {useGenderPalette} from '../context/GenderPaletteContext';
 import {formatPrice} from '../data/products';
+import GenderGradientBg from '../components/GenderGradientBg';
+import BlurView from '../components/BlurFallback';
 import Icon from '../components/Icon';
 
-// CartScreen uses Icon component for all visual elements - no emojis
+const PAD = SIZES.screenPadding;
 
 interface Props {
   navigation: any;
 }
 
 export default function CartScreen({navigation}: Props) {
-  const {colors, isDark} = useTheme();
+  const {isDark} = useTheme();
+  const {palette: gp, activeGender} = useGenderPalette();
   const {state, dispatch, cartTotal, cartItemCount} = useApp();
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const accent = isDark ? (activeGender === 'Men' ? '#CDF564' : gp.mid) : gp.mid;
+  const accentText = isDark ? '#000' : '#FFF';
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(fadeAnim, {toValue: 1, friction: 10, tension: 50, useNativeDriver: true}).start();
   }, [fadeAnim]);
 
   const handleUpdateQuantity = (productId: string, newQuantity: number) => {
@@ -53,225 +55,205 @@ export default function CartScreen({navigation}: Props) {
 
   if (state.cart.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40}}>
+        <GenderGradientBg />
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={styles.emptyIconContainer}>
-          <Icon name="shopping-bag" size={36} color={colors.textTertiary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[s.backBtn, {position: 'absolute', top: Platform.OS === 'ios' ? 60 : 44, left: PAD}]} activeOpacity={0.7}>
+          <Icon name="arrow-left" size={20} color={isDark ? '#FFF' : '#1A1A1A'} />
+        </TouchableOpacity>
+        <View style={[s.emptyIcon, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}]}>
+          <Icon name="shopping-bag" size={36} color={isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)'} />
         </View>
-        <Text style={styles.emptyTitle}>Your cart is empty</Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[s.emptyTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Your cart is empty</Text>
+        <Text style={[s.emptyText, {color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'}]}>
           Looks like you haven't added{'\n'}anything to your cart yet
         </Text>
         <TouchableOpacity
-          style={styles.shopButton}
+          style={[s.shopBtn, {backgroundColor: accent}]}
           onPress={() => navigation.navigate('HomeTab')}>
-          <Text style={styles.shopButtonText}>Start Shopping</Text>
+          <Text style={{fontSize: 14, fontWeight: '700', fontFamily: 'Helvetica', color: accentText}}>Start Shopping</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={{flex: 1, backgroundColor: isDark ? '#000' : '#FAFAFA'}}>
+      <GenderGradientBg />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Cart</Text>
-        <Text style={styles.itemCount}>{cartItemCount} items</Text>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+          <Icon name="arrow-left" size={20} color={isDark ? '#FFF' : '#1A1A1A'} />
+        </TouchableOpacity>
+        <Text style={[s.headerTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Cart</Text>
+        <Text style={[s.itemCount, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>{cartItemCount} items</Text>
       </View>
 
       <Animated.ScrollView
-        style={{opacity: fadeAnim}}
+        style={{opacity: fadeAnim, transform: [{translateY: fadeAnim.interpolate({inputRange: [0, 1], outputRange: [20, 0]})}]}}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.cartList}>
+        contentContainerStyle={{paddingHorizontal: PAD}}>
+
         {state.cart.map(item => (
-          <View key={item.product.id + item.selectedSize} style={styles.cartItem}>
-            <Image
-              source={{uri: item.product.images[0]}}
-              style={styles.itemImage}
-              resizeMode="cover"
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemBrand}>{item.product.brand}</Text>
-              <Text style={styles.itemName} numberOfLines={1}>
+          <View key={item.product.id + item.selectedSize} style={[s.cartItem, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+            <View>
+              <Image
+                source={{uri: item.product.images[0]}}
+                style={s.itemImage}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={[s.removeBtn, {backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.45)'}]}
+                onPress={() => handleRemoveItem(item.product.id)}>
+                <Icon name="x" size={12} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <View style={s.itemInfo}>
+              <Text style={[s.itemBrand, {color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}]}>{item.product.brand}</Text>
+              <Text style={[s.itemName, {color: isDark ? '#FFF' : '#1A1A1A'}]} numberOfLines={1}>
                 {item.product.name}
               </Text>
-              <Text style={styles.itemMeta}>
+              <Text style={[s.itemMeta, {color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.35)'}]}>
                 Size: {item.selectedSize}
               </Text>
-              <Text style={styles.itemPrice}>
+              <Text style={[s.itemPrice, {color: isDark ? '#FFF' : '#1A1A1A'}]}>
                 {formatPrice(item.product.price * item.quantity)}
               </Text>
             </View>
-            <View style={styles.quantityContainer}>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() =>
-                  handleUpdateQuantity(item.product.id, item.quantity - 1)
-                }>
-                <Icon name="minus" size={14} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={styles.quantityText}>{item.quantity}</Text>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() =>
-                  handleUpdateQuantity(item.product.id, item.quantity + 1)
-                }>
-                <Icon name="plus" size={14} color={colors.textPrimary} />
-              </TouchableOpacity>
+            <View style={s.rightCol}>
+              <View style={s.quantityContainer}>
+                <TouchableOpacity
+                  style={[s.qtyBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}]}
+                  onPress={() => handleUpdateQuantity(item.product.id, item.quantity - 1)}>
+                  <Icon name="minus" size={14} color={isDark ? '#FFF' : '#1A1A1A'} />
+                </TouchableOpacity>
+                <Text style={[s.qtyText, {color: isDark ? '#FFF' : '#1A1A1A'}]}>{item.quantity}</Text>
+                <TouchableOpacity
+                  style={[s.qtyBtn, {backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}]}
+                  onPress={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}>
+                  <Icon name="plus" size={14} color={isDark ? '#FFF' : '#1A1A1A'} />
+                </TouchableOpacity>
+              </View>
             </View>
-            {/* Remove button */}
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => handleRemoveItem(item.product.id)}>
-              <Icon name="x" size={14} color={colors.textTertiary} />
-            </TouchableOpacity>
           </View>
         ))}
 
         {/* Order summary */}
-        <View style={styles.summaryContainer}>
-          <Text style={styles.summaryTitle}>Order Summary</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>{formatPrice(cartTotal)}</Text>
+        <View style={[s.summary, {backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}]}>
+          <Text style={[s.summaryTitle, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Order Summary</Text>
+          <View style={s.summaryRow}>
+            <Text style={[s.summaryLabel, {color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}]}>Subtotal</Text>
+            <Text style={[s.summaryValue, {color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'}]}>{formatPrice(cartTotal)}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <View style={styles.deliveryRow}>
-              <Icon name="truck" size={14} color={colors.textSecondary} />
-              <Text style={styles.summaryLabel}>  Delivery</Text>
+          <View style={s.summaryRow}>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <Icon name="truck" size={13} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'} />
+              <Text style={[s.summaryLabel, {color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}]}>Delivery</Text>
             </View>
-            <Text style={[styles.summaryValue, styles.freeText]}>FREE</Text>
+            <Text style={{fontSize: 13, fontWeight: '700', fontFamily: 'Helvetica', color: '#34C759'}}>FREE</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tax</Text>
-            <Text style={styles.summaryValue}>
-              {formatPrice(cartTotal * 0.08)}
-            </Text>
+          <View style={s.summaryRow}>
+            <Text style={[s.summaryLabel, {color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}]}>Tax</Text>
+            <Text style={[s.summaryValue, {color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'}]}>{formatPrice(cartTotal * 0.08)}</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>
-              {formatPrice(cartTotal * 1.08)}
-            </Text>
+          <View style={[s.divider, {backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}]} />
+          <View style={s.summaryRow}>
+            <Text style={[s.totalLabel, {color: isDark ? '#FFF' : '#1A1A1A'}]}>Total</Text>
+            <Text style={[s.totalValue, {color: accent}]}>{formatPrice(cartTotal * 1.08)}</Text>
           </View>
         </View>
 
-        <View style={{height: 120}} />
+        <View style={{height: 140}} />
       </Animated.ScrollView>
 
       {/* Bottom checkout bar */}
-      <View style={styles.bottomBar}>
-        <View style={styles.bottomTotal}>
-          <Text style={styles.bottomTotalLabel}>Total</Text>
-          <Text style={styles.bottomTotalValue}>
-            {formatPrice(cartTotal * 1.08)}
-          </Text>
+      <View style={s.bottomBar}>
+        <BlurView
+          blurType={isDark ? 'dark' : 'light'}
+          blurAmount={25}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[s.bottomBarInner, {borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}]}>
+          <TouchableOpacity
+            style={[s.checkoutBtn, {backgroundColor: accent}]}
+            onPress={handleCheckout}
+            activeOpacity={0.8}>
+            <Text style={[s.checkoutText, {color: accentText}]}>Checkout</Text>
+            <Text style={[s.checkoutAmount, {color: accentText}]}>{formatPrice(cartTotal * 1.08)}</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.checkoutButton}
-          onPress={handleCheckout}
-          activeOpacity={0.8}>
-          <Text style={styles.checkoutButtonText}>Checkout</Text>
-          <View style={styles.checkoutArrow}>
-            <Icon name="arrow-right" size={18} color={colors.accentText} />
-          </View>
-        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+const s = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: PAD,
+    paddingTop: Platform.OS === 'ios' ? 60 : 44,
+    paddingBottom: 16,
+    gap: 12,
   },
-  // Empty state
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
   },
-  emptyIconContainer: {
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    fontFamily: 'Rondira-Medium',
+  },
+  itemCount: {
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Helvetica',
+    marginLeft: 'auto',
+  },
+  // Empty
+  emptyIcon: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.glassLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: SIZES.h3,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
     marginBottom: 8,
   },
-  emptySubtitle: {
-    fontSize: SIZES.body,
-    color: colors.textTertiary,
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Helvetica',
     textAlign: 'center',
-    lineHeight: 24,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    lineHeight: 22,
   },
-  shopButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: 16,
+  shopBtn: {
+    paddingVertical: 14,
     paddingHorizontal: 40,
-    borderRadius: SIZES.radiusFull,
-    marginTop: 32,
+    borderRadius: 100,
+    marginTop: 28,
   },
-  shopButtonText: {
-    color: colors.accentText,
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
-  },
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingHorizontal: SIZES.screenPadding,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: SIZES.h1,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    letterSpacing: 0.3,
-  },
-  itemCount: {
-    fontSize: SIZES.bodySmall,
-    color: colors.textTertiary,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-  },
-  // Cart list
-  cartList: {
-    paddingHorizontal: SIZES.screenPadding,
-  },
+  // Cart items
   cartItem: {
     flexDirection: 'row',
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusLg,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 12,
   },
   itemImage: {
     width: 80,
     height: 80,
-    borderRadius: SIZES.radiusMd,
-    backgroundColor: colors.glassLight,
+    borderRadius: 12,
   },
   itemInfo: {
     flex: 1,
@@ -279,77 +261,73 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     justifyContent: 'center',
   },
   itemBrand: {
-    fontSize: SIZES.tiny,
-    color: colors.textTertiary,
-    fontWeight: FONT_WEIGHTS.medium,
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontFamily: 'Poppins',
   },
   itemName: {
-    fontSize: SIZES.bodySmall,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
     marginTop: 2,
-    fontFamily: 'Poppins',
   },
   itemMeta: {
-    fontSize: SIZES.caption,
-    color: colors.textTertiary,
+    fontSize: 11,
+    fontFamily: 'Helvetica',
     marginTop: 2,
-    fontFamily: 'Poppins',
   },
   itemPrice: {
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
     marginTop: 4,
-    fontFamily: 'Poppins',
+  },
+  rightCol: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginLeft: 8,
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quantityContainer: {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginTop: 6,
   },
-  quantityButton: {
+  qtyBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.glassMedium,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  quantityText: {
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
+  qtyText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
     marginVertical: 4,
-    fontFamily: 'Poppins',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   // Summary
-  summaryContainer: {
-    backgroundColor: colors.glassLight,
-    borderRadius: SIZES.radiusLg,
+  summary: {
+    borderRadius: 18,
     padding: 20,
     marginTop: 8,
   },
   summaryTitle: {
-    fontSize: SIZES.h4,
-    fontFamily: FONTS.serif,
-    fontWeight: FONT_WEIGHTS.bold,
-    letterSpacing: 0.2,
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Rondira-Medium',
     marginBottom: 16,
   },
   summaryRow: {
@@ -357,89 +335,65 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  deliveryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   summaryLabel: {
-    fontSize: SIZES.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
+    fontSize: 13,
+    fontFamily: 'Helvetica',
   },
   summaryValue: {
-    fontSize: SIZES.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: FONT_WEIGHTS.medium,
-    fontFamily: 'Poppins',
-  },
-  freeText: {
-    color: colors.success,
-    fontWeight: FONT_WEIGHTS.semiBold,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Helvetica',
   },
   divider: {
     height: 1,
-    backgroundColor: colors.glassLight,
     marginVertical: 10,
   },
   totalLabel: {
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
   totalValue: {
-    fontSize: SIZES.h4,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.accent,
-    fontFamily: 'Poppins',
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
   },
-  // Bottom bar
+  // Bottom
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.glassLight,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  bottomBarInner: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 34,
-    borderTopLeftRadius: SIZES.radiusXl,
-    borderTopRightRadius: SIZES.radiusXl,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
   },
-  bottomTotal: {
-    marginRight: 20,
-  },
-  bottomTotalLabel: {
-    fontSize: SIZES.caption,
-    color: colors.textTertiary,
-    fontWeight: FONT_WEIGHTS.regular,
-    fontFamily: 'Poppins',
-  },
-  bottomTotalValue: {
-    fontSize: SIZES.h4,
-    fontWeight: FONT_WEIGHTS.bold,
-    color: colors.textPrimary,
-    fontFamily: 'Poppins',
-  },
-  checkoutButton: {
-    flex: 1,
+  checkoutBtn: {
     flexDirection: 'row',
-    backgroundColor: colors.accent,
-    paddingVertical: 16,
-    borderRadius: SIZES.radiusFull,
+    paddingVertical: 18,
+    borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkoutButtonText: {
-    color: colors.accentText,
-    fontSize: SIZES.body,
-    fontWeight: FONT_WEIGHTS.semiBold,
-    fontFamily: 'Poppins',
+  checkoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Helvetica',
   },
-  checkoutArrow: {
+  checkoutAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Helvetica',
     marginLeft: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 100,
   },
 });

@@ -17,6 +17,7 @@ import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {Product, PRODUCTS, formatPrice} from '../data/products';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
+import GenderGradientBg from '../components/GenderGradientBg';
 import Icon from '../components/Icon';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -557,6 +558,7 @@ export default function ProductSwiperScreen({route, navigation}: Props) {
 
   return (
     <View style={styles.container}>
+      <GenderGradientBg />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Card swiper */}

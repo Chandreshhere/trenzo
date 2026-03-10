@@ -14,6 +14,8 @@ import {COLORS, FONTS, FONT_WEIGHTS, SIZES, SHADOWS} from '../utils/theme';
 import {useApp} from '../context/AppContext';
 import {useTheme} from '../context/ThemeContext';
 import {formatPrice} from '../data/products';
+import GenderGradientBg from '../components/GenderGradientBg';
+import BlurView from '../components/BlurFallback';
 import Icon from '../components/Icon';
 
 interface Props {
@@ -59,6 +61,7 @@ export default function CheckoutScreen({navigation}: Props) {
 
   return (
     <View style={styles.container}>
+      <GenderGradientBg />
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
@@ -217,20 +220,33 @@ export default function CheckoutScreen({navigation}: Props) {
 
       {/* Place Order Button */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.placeOrderButton}
-          onPress={handlePlaceOrder}
-          activeOpacity={0.8}>
-          <Text style={styles.placeOrderText}>Place Order</Text>
-          <Text style={styles.placeOrderAmount}>
-            {formatPrice(totalWithTax)}
-          </Text>
-        </TouchableOpacity>
+        <BlurView
+          blurType={isDark ? 'dark' : 'light'}
+          blurAmount={25}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.bottomBarInner}>
+          <TouchableOpacity
+            style={styles.placeOrderButton}
+            onPress={handlePlaceOrder}
+            activeOpacity={0.8}>
+            <Text style={styles.placeOrderText}>Place Order</Text>
+            <Text style={styles.placeOrderAmount}>
+              {formatPrice(totalWithTax)}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="none">
         <View style={styles.modalOverlay}>
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            blurType={isDark ? 'dark' : 'light'}
+            blurAmount={20}
+            reducedTransparencyFallbackColor={isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)'}
+          />
           <Animated.View
             style={[
               styles.successModal,
@@ -239,6 +255,16 @@ export default function CheckoutScreen({navigation}: Props) {
                 transform: [{scale: successScale}],
               },
             ]}>
+            <BlurView
+              style={[StyleSheet.absoluteFill, {borderRadius: SIZES.radiusXl}]}
+              blurType={isDark ? 'ultraThinMaterialDark' : 'ultraThinMaterialLight'}
+              blurAmount={40}
+              reducedTransparencyFallbackColor={isDark ? 'rgba(30,30,40,0.92)' : 'rgba(255,255,255,0.92)'}
+            />
+            <View style={[StyleSheet.absoluteFill, {
+              backgroundColor: isDark ? 'rgba(20,18,30,0.7)' : 'rgba(255,255,255,0.7)',
+              borderRadius: SIZES.radiusXl,
+            }]} />
             <View style={styles.successIconContainer}>
               <Icon name="check-circle" size={48} color={colors.accentForeground} />
             </View>
@@ -458,12 +484,16 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.glassLight,
+    borderTopLeftRadius: SIZES.radiusXl,
+    borderTopRightRadius: SIZES.radiusXl,
+    overflow: 'hidden',
+  },
+  bottomBarInner: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 34,
-    borderTopLeftRadius: SIZES.radiusXl,
-    borderTopRightRadius: SIZES.radiusXl,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
   },
   placeOrderButton: {
     backgroundColor: colors.accent,
@@ -493,16 +523,22 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   // Success modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   successModal: {
-    backgroundColor: colors.glassLight,
     borderRadius: SIZES.radiusXl,
     padding: 36,
     marginHorizontal: 32,
     alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 12},
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
   },
   successIconContainer: {
     width: 80,

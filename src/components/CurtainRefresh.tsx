@@ -9,8 +9,8 @@ import Animated, {
   interpolate,
   Extrapolation,
   SharedValue,
+  runOnJS,
 } from 'react-native-reanimated';
-import {scheduleOnRN} from 'react-native-worklets';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from './Icon';
 import {GenderPalette} from '../context/GenderPaletteContext';
@@ -58,7 +58,7 @@ export default function CurtainRefresh({scrollY, palette, onRefresh, refreshing}
     if (pullAmount > PULL_THRESHOLD && !hasTriggered.value && !refreshing) {
       hasTriggered.value = true;
       holdingOpen.value = PULL_THRESHOLD * 0.7;
-      scheduleOnRN(onRefresh);
+      runOnJS(onRefresh)();
     }
     if (pullAmount < 10 && hasTriggered.value) {
       hasTriggered.value = false;

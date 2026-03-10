@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useState, useEffect, useCallback, ReactNode} from 'react';
+import React, {createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface ThemeColors {
@@ -125,7 +125,14 @@ interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;
   statusBarStyle: 'light-content' | 'dark-content';
+  setActiveGender: (gender: 'Men' | 'Women') => void;
+  activeGender: 'Men' | 'Women';
 }
+
+const GENDER_BG: Record<string, Record<string, string>> = {
+  Men: {dark: '#0D0033', light: '#F0EBFF'},
+  Women: {dark: '#1A0B12', light: '#FFF0F5'},
+};
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -133,6 +140,7 @@ const STORAGE_KEY = '@trenzo_theme_mode';
 
 export function ThemeProvider({children}: {children: ReactNode}) {
   const [isDark, setIsDark] = useState(true);
+  const [activeGender, setActiveGender] = useState<'Men' | 'Women'>('Men');
 
   useEffect(() => {
     (async () => {
@@ -155,11 +163,16 @@ export function ThemeProvider({children}: {children: ReactNode}) {
     });
   }, []);
 
-  const colors = isDark ? DARK_THEME : LIGHT_THEME;
+  const colors = useMemo(() => {
+    const base = isDark ? DARK_THEME : LIGHT_THEME;
+    const bg = isDark ? '#000000' : '#FAFAFA';
+    return {...base, background: bg};
+  }, [isDark, activeGender]);
+
   const statusBarStyle = isDark ? 'light-content' : 'dark-content';
 
   return (
-    <ThemeContext.Provider value={{colors, isDark, toggleTheme, statusBarStyle}}>
+    <ThemeContext.Provider value={{colors, isDark, toggleTheme, statusBarStyle, setActiveGender, activeGender}}>
       {children}
     </ThemeContext.Provider>
   );

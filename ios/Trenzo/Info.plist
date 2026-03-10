@@ -47,6 +47,9 @@
 		<string>Poppins-Bold.ttf</string>
 		<string>Poppins-SemiBold.ttf</string>
 		<string>Jost-Black.ttf</string>
+		<string>MeaCulpa-Regular.ttf</string>
+		<string>PatuaOne-Regular.ttf</string>
+		<string>Rondira-Medium.otf</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
